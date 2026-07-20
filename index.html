@@ -631,6 +631,21 @@
     }, null, 2);
   }
   function dataUri(mime, content) { return "data:" + mime + ";charset=utf-8," + encodeURIComponent(content); }
+  // скачивание файла: Blob работает на обычном хостинге (GitHub Pages и т.п.); в песочнице артефакта фолбэк на data:-ссылку
+  function download(name, mime, content) {
+    try {
+      var blob = new Blob([content], { type: mime + ";charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = name; a.rel = "noopener"; a.style.display = "none";
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    } catch (e) {
+      var a2 = document.createElement("a");
+      a2.href = dataUri(mime, content); a2.download = name;
+      document.body.appendChild(a2); a2.click(); a2.remove();
+    }
+  }
   // добавляет width/height к SVG (нужно для растеризации в PNG)
   function withPxSize(svgString) {
     var m = svgString.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
@@ -847,16 +862,14 @@
 
     if (ui.orderNumber) {
       var txt = orderText(o);
-      var fname = "kovrik-" + (ui.orderNumber || o.id);
-      var svgHref = dataUri("image/svg+xml", exportSvgFile(o));
-      var jsonHref = dataUri("application/json", orderJson(o));
       return '<h2 class="step-title">Заявка оформлена ✅</h2><div style="height:14px"></div>' +
-        '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Номер вашей заявки: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Отправьте заявку производителю: скопируйте текст заявки и сохраните чертёж-картинку.</p></div>' +
+        '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Номер вашей заявки: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Отправьте заявку производителю: скопируйте текст и скачайте чертёж.</p></div>' +
         '<div class="export-actions"><button class="btn" data-act="copyText">📋 Скопировать текст заявки</button>' +
+        '<button class="btn-ghost" data-act="dlSvg">⬇ Скачать чертёж SVG</button>' +
+        '<button class="btn-ghost" data-act="dlJson">⬇ Скачать данные JSON</button>' +
         '<button class="btn-ghost" data-act="copyJson">Скопировать данные (JSON)</button></div>' +
-        '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(ui.orderNumber) + '"><p class="hint">Чертёж коврика. Чтобы сохранить: на телефоне — <strong>долгое нажатие</strong> на картинку → «Сохранить», на компьютере — <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
+        '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(ui.orderNumber) + '"><p class="hint">Если на телефоне «Скачать» не сработало — сохраните этот чертёж картинкой: <strong>долгое нажатие</strong> → «Сохранить», или <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
         '<details class="order-text"><summary>Текст заявки (нажмите, чтобы посмотреть)</summary><pre>' + esc(txt) + '</pre></details>' +
-        '<details class="order-text"><summary>Скачать файлы (если ваш браузер разрешит)</summary><div class="btn-row" style="padding:8px 0"><a class="btn-ghost" download="' + fname + '.svg" href="' + svgHref + '">Файл SVG</a><a class="btn-ghost" download="' + fname + '.json" href="' + jsonHref + '">Файл JSON</a></div></details>' +
         '<div class="actions-footer"><button class="btn-ghost" data-act="newOrder">Новый расчёт</button></div>';
     }
 
@@ -1040,6 +1053,8 @@
       case "submit": doSubmit(); break;
       case "copyText": { var oc = buildOrder(); if (oc) doCopy(t, orderText(oc), "📋 Скопировать текст заявки"); break; }
       case "copyJson": { var oj = buildOrder(); if (oj) doCopy(t, orderJson(oj), "Скопировать данные (JSON)"); break; }
+      case "dlSvg": { var os = buildOrder(); if (os) download("kovrik-" + (ui.orderNumber || os.id) + ".svg", "image/svg+xml", exportSvgFile(os)); break; }
+      case "dlJson": { var od = buildOrder(); if (od) download("kovrik-" + (ui.orderNumber || od.id) + ".json", "application/json", orderJson(od)); break; }
       case "newOrder": resetAll(); break;
       case "resetAsk": ui.confirmReset = true; render(); break;
       case "resetYes": resetAll(); break;
