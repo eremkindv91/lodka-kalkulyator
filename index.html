@@ -227,9 +227,8 @@
   .hero-photo { margin: 0; }
   .hero-photo-link { display: block; border-radius: 14px; }
   .hero-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; border: 1px solid var(--line); background: #06263a; }
-  .hero-photo figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
   .hero-photo.ph { position: relative; aspect-ratio: 4 / 5; border-radius: 14px; border: 1px dashed var(--line-strong); background: var(--surface-2); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 14px; padding: 20px; }
-  .hero-photo.ph .hero-photo-link, .hero-photo.ph figcaption { display: none; }
+  .hero-photo.ph .hero-photo-link { display: none; }
   .hero-photo.ph::before { content: "🛥️ Здесь будет фото готового EVA-коврика в лодке"; max-width: 22ch; line-height: 1.5; }
   .hero-slot { margin: 0; }
   .hero-slot--inline { width: min(100%, 300px); justify-self: center; }
@@ -385,7 +384,7 @@
 <div id="app">
   <div class="wrap">
     <div class="topbar">
-      <div class="brand"><span class="mark">⚓</span> Коврик для лодки</div>
+      <div class="brand"><span class="mark">⚓</span> KOVRIKVLODKY.RU</div>
       <div class="topbar-actions" id="topActions"></div>
     </div>
     <div class="progress" id="progress" hidden></div>
@@ -847,12 +846,11 @@
         '<a class="hero-photo-link" href="assets/eva-mat-in-boat.webp" target="_blank" rel="noopener">' +
         '<img src="assets/eva-mat-in-boat.webp" alt="Серый EVA-коврик с синей окантовкой, установленный в красной лодке" width="960" height="1200" decoding="async" fetchpriority="high" ' +
         'onerror="this.closest(&quot;figure&quot;).classList.add(&quot;ph&quot;)"></a>' +
-        '<figcaption>Готовый EVA-коврик в лодке — изображение открывается полностью</figcaption>' +
       '</figure></div>';
     }
     return '<div class="hero">' +
       '<div class="hero-copy">' +
-        '<h2 class="step-title">EVA-коврик для лодки по вашим размерам</h2>' +
+        '<h2 class="step-title">Рассчитайте размер и стоимость онлайн</h2>' +
         '<p class="lead">Постройте чертёж коврика по внутренним размерам лодки, сразу узнайте площадь и стоимость, сохраните чертёж и оформите заявку. Перед изготовлением менеджер проверит корректность размеров и возможность производства.</p>' +
         photo("hero-slot--inline") +
         '<ul class="intro-list">' + pts.map(function (p) { return '<li><span class="ic">' + p[0] + '</span><span>' + p[1] + '</span></li>'; }).join("") + "</ul>" +
