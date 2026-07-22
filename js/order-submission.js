@@ -1,7 +1,8 @@
 /*
- * Адаптер отправки заявки на внешний безопасный endpoint (например, Google Apps Script).
- * Секретов здесь нет — только POST на публично заданный URL. Бэкенд сам шлёт в Telegram.
- * Возвращает { success, orderNumber?, message? }. Никогда не бросает — сеть/таймаут → success:false.
+ * Адаптер отправки заявки на внешний безопасный endpoint.
+ * Секретов здесь нет — только POST на публично заданный URL. Бэкенд сам шлёт в Telegram и MAX.
+ * Возвращает { success, orderNumber?, channels?, message?, field? }.
+ * Никогда не бросает — сеть/таймаут → success:false.
  */
 (function (root) {
   "use strict";
@@ -22,15 +23,29 @@
       signal: controller ? controller.signal : undefined
     })
       .then(function (res) {
-        clearTimeout(timer);
         return res.text().then(function (text) {
           var data = {};
           try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
           if (res.ok && data && data.success) {
-            return { success: true, orderNumber: data.orderNumber || null };
+            return {
+              success: true,
+              orderNumber: data.orderNumber || null,
+              channels: data.channels || null
+            };
           }
-          return { success: false, message: (data && data.message) || ("http-" + res.status) };
+          var failed = {
+            success: false,
+            orderNumber: (data && data.orderNumber) || null,
+            channels: (data && data.channels) || null,
+            message: (data && data.message) || ("http-" + res.status)
+          };
+          if (data && data.field) failed.field = data.field;
+          return failed;
         });
+      })
+      .then(function (result) {
+        clearTimeout(timer);
+        return result;
       })
       .catch(function (err) {
         clearTimeout(timer);

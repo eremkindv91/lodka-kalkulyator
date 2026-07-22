@@ -12,8 +12,10 @@
 <meta property="og:description" content="Постройте чертёж EVA-коврика по внутренним размерам лодки, рассчитайте стоимость и оформите заявку.">
 <meta property="og:url" content="https://kovrikvlodky.ru/">
 <meta property="og:image" content="https://kovrikvlodky.ru/og.jpg">
-<meta property="og:image:width" content="600">
-<meta property="og:image:height" content="315">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:alt" content="EVA-коврик в лодке">
 <meta name="twitter:card" content="summary_large_image">
 <script src="js/pricing-core.js"></script>
 <script src="js/manufacturing-core.js"></script>
@@ -200,6 +202,7 @@
     font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s;
   }
   .btn-ghost:hover { background: var(--surface-2); border-color: var(--accent); color: var(--ink); }
+  .btn-ghost:disabled { opacity: .55; cursor: not-allowed; background: var(--surface-2); border-color: var(--line); color: var(--muted); }
   .btn-ghost.danger { color: var(--danger); border-color: var(--danger); }
   .btn-ghost.danger:hover { background: var(--danger-soft); }
   .btn-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -222,12 +225,14 @@
   .hero { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
   .hero-copy { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   .hero-photo { margin: 0; }
-  .hero-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); }
+  .hero-photo-link { display: block; border-radius: 14px; }
+  .hero-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; border: 1px solid var(--line); background: #06263a; }
   .hero-photo figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
-  .hero-photo.ph { position: relative; aspect-ratio: 4 / 3; border-radius: 14px; border: 1px dashed var(--line-strong); background: var(--surface-2); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 14px; padding: 20px; }
-  .hero-photo.ph img, .hero-photo.ph figcaption { display: none; }
+  .hero-photo.ph { position: relative; aspect-ratio: 4 / 5; border-radius: 14px; border: 1px dashed var(--line-strong); background: var(--surface-2); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 14px; padding: 20px; }
+  .hero-photo.ph .hero-photo-link, .hero-photo.ph figcaption { display: none; }
   .hero-photo.ph::before { content: "🛥️ Здесь будет фото готового EVA-коврика в лодке"; max-width: 22ch; line-height: 1.5; }
   .hero-slot { margin: 0; }
+  .hero-slot--inline { width: min(100%, 300px); justify-self: center; }
   .hero-slot--side { display: none; }
   @media (min-width: 860px) {
     .hero { grid-template-columns: 1fr minmax(300px, 400px); column-gap: 34px; align-items: start; }
@@ -554,7 +559,7 @@
   }
 
   var draft = load();
-  var ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, submitMode: null };
+  var ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, pendingOrderNumber: null, submitMode: null, submitChannels: null };
 
   // ---------- SVG blueprint ----------
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -669,11 +674,11 @@
     var parts = computeParts(prod.lengthCm, MANUFACTURING);
     return { id: draft.id, input: input, prod: prod, geo: geo, pricing: pricing, parts: parts };
   }
-  function orderText(o) {
+  function orderText(o, explicitOrderNumber) {
     var FL = { rigid: "Жёсткое дно", ndnd: "НДНД (надувное дно низкого давления)" };
     var L = [];
     L.push("ЗАЯВКА НА EVA-КОВРИК ДЛЯ ЛОДКИ");
-    L.push("Номер: " + (ui.orderNumber || o.id));
+    L.push("Номер: " + (explicitOrderNumber || ui.orderNumber || o.id));
     L.push("");
     if (draft.boatName) L.push("Лодка: " + draft.boatName);
     L.push("Тип дна: " + FL[draft.floorType]);
@@ -729,10 +734,10 @@
     return JSON.stringify(orderPayload(o), null, 2);
   }
   // Публичный payload заявки (без себестоимости, маржи и ставок).
-  function orderPayload(o) {
+  function orderPayload(o, explicitOrderNumber) {
     return {
       schemaVersion: 2,
-      id: ui.orderNumber || o.id,
+      id: explicitOrderNumber || ui.orderNumber || o.id,
       createdAt: new Date().toISOString(),
       site: { origin: (window.BOAT_MAT_PUBLIC_CONFIG && window.BOAT_MAT_PUBLIC_CONFIG.siteUrl) || location.origin, appVersion: APP_VERSION },
       boat: { name: draft.boatName || null, floorType: draft.floorType },
@@ -801,7 +806,7 @@
   // ---------- rendering helpers ----------
   var $ = function (id) { return document.getElementById(id); };
   function goStep(n) { draft.step = n; save(); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function resetAll() { draft = emptyDraft(); ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, submitMode: null }; save(); render(); }
+  function resetAll() { draft = emptyDraft(); ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, pendingOrderNumber: null, submitMode: null, submitChannels: null }; save(); render(); }
 
   // ---------- previews ----------
   function previewData() {
@@ -839,9 +844,10 @@
     // Две фигуры: боковая (desktop) и компактная (mobile, между описанием и кнопкой).
     function photo(slotCls) {
       return '<div class="hero-slot ' + slotCls + '"><figure class="hero-photo">' +
-        '<img src="assets/eva-mat-in-boat.webp" alt="Готовый EVA-коврик, установленный в лодке" width="760" height="570" decoding="async" ' +
-        'onerror="this.closest(&quot;figure&quot;).classList.add(&quot;ph&quot;)">' +
-        '<figcaption>Готовый EVA-коврик в лодке</figcaption>' +
+        '<a class="hero-photo-link" href="assets/eva-mat-in-boat.webp" target="_blank" rel="noopener">' +
+        '<img src="assets/eva-mat-in-boat.webp" alt="Серый EVA-коврик с синей окантовкой, установленный в красной лодке" width="960" height="1200" decoding="async" fetchpriority="high" ' +
+        'onerror="this.closest(&quot;figure&quot;).classList.add(&quot;ph&quot;)"></a>' +
+        '<figcaption>Готовый EVA-коврик в лодке — изображение открывается полностью</figcaption>' +
       '</figure></div>';
     }
     return '<div class="hero">' +
@@ -867,7 +873,7 @@
     return '<div class="eyebrow">Шаг 1 из 5</div><h2 class="step-title">Основные размеры</h2>' +
       '<div style="height:18px"></div>' +
       field("Название или модель лодки", '<span class="opt">(необязательно)</span>', null, null,
-        '<div class="input-wrap"><input id="f-name" type="text" value="' + esc(draft.boatName) + '" placeholder="Например: Кайман N-330" style="font-family:var(--sans)"></div>') +
+        '<div class="input-wrap"><input id="f-name" type="text" maxlength="160" value="' + esc(draft.boatName) + '" placeholder="Например: Кайман N-330" style="font-family:var(--sans)"></div>') +
       field("Внутренняя длина лодки", "", "Измерьте внутреннюю длину пола лодки по центру — от верхней точки носа до кормы.", lenIssue,
         '<div class="input-wrap"><input id="f-length" type="text" inputmode="decimal" value="' + (draft.lengthCm != null ? esc(fmt(draft.lengthCm)) : "") + '" placeholder="220" class="' + (lenIssue ? "err" : "") + '"><span class="unit">см</span></div>') +
       field("Постоянная внутренняя ширина", "", "Измерьте ширину пола поперёк лодки там, где она постоянная", widIssue,
@@ -881,9 +887,22 @@
   }
 
   function field(label, extra, hint, issue, control) {
-    return '<div class="field"><label>' + label + " " + (extra || "") + "</label>" +
+    var idMatch = control.match(/\bid="([^"]+)"/);
+    var forAttr = idMatch ? ' for="' + esc(idMatch[1]) + '"' : "";
+    var errorId = issue && idMatch ? idMatch[1] + "-error" : "";
+    if (errorId) {
+      control = control.replace('id="' + idMatch[1] + '"', 'id="' + idMatch[1] + '" aria-invalid="true" aria-describedby="' + errorId + '"');
+    }
+    return '<div class="field"><label' + forAttr + '>' + label + " " + (extra || "") + "</label>" +
       (hint ? '<p class="hint">' + hint + "</p>" : "") + control +
-      (issue ? '<p class="msg-err">' + issue.message + "</p>" : "") + "</div>";
+      (issue ? '<p class="msg-err"' + (errorId ? ' id="' + esc(errorId) + '"' : "") + '>' + issue.message + "</p>" : "") + "</div>";
+  }
+
+  function focusFirstInvalidField() {
+    setTimeout(function () {
+      var invalid = document.querySelector('[aria-invalid="true"]');
+      if (invalid && !invalid.disabled) invalid.focus();
+    }, 0);
   }
 
   function renderBow() {
@@ -1057,28 +1076,38 @@
       : '<p style="margin:0;color:var(--ink-soft)">Стоимость временно недоступна. Отправьте заявку для уточнения.</p>';
 
     var endpoint = orderEndpoint();
-    var ctaLabel = endpoint ? "Отправить заявку" : "Подготовить заявку";
+    var ctaLabel = endpoint ? (ui.submitMode === "error" ? "Повторить отправку" : "Отправить заявку") : "Подготовить заявку";
+    var deliveryLocked = ui.submitMode === "sending" || Boolean(ui.submitChannels && (ui.submitChannels.telegram || ui.submitChannels.max));
+    var contactDisabled = deliveryLocked ? " disabled" : "";
     var statusHtml = "";
     if (ui.submitMode === "sending") statusHtml = '<div class="callout info" role="status" aria-live="polite">Отправляем…</div>';
-    else if (ui.submitMode === "error") statusHtml = '<div class="callout danger" role="alert">Не удалось отправить заявку. Проверьте интернет и попробуйте ещё раз — или подготовьте заявку и отправьте менеджеру вручную.</div>';
+    else if (ui.submitMode === "error") {
+      var partiallyDelivered = ui.submitChannels && (ui.submitChannels.telegram || ui.submitChannels.max);
+      statusHtml = partiallyDelivered
+        ? '<div class="callout warn" role="alert">Один канал уже получил заявку, второй пока не подтвердил доставку. Нажмите «Повторить отправку» — уже доставленный канал не будет дублироваться. Чтобы изменить данные, начните новый расчёт.</div>'
+        : '<div class="callout danger" role="alert">' + esc(ui.contactErr.form || "Сервис не подтвердил отправку. Проверьте данные и интернет, затем попробуйте ещё раз.") + '</div>' + telegramButtonHtml(orderText(o, ui.pendingOrderNumber));
+    }
 
     var html = '<div class="eyebrow">Шаг 5 из 5</div><h2 class="step-title">Стоимость и заказ</h2><div style="height:16px"></div>' +
       '<div class="price-card">' + priceHtml + "</div>" +
       partsHtml(o.parts) +
       '<h3 style="font-size:18px;margin:6px 0 14px">Ваши контакты</h3>' +
       field("Имя", "", null, ui.contactErr.name ? { message: ui.contactErr.name } : null,
-        '<input id="c-name" type="text" value="' + esc(draft.customer.name) + '" class="' + (ui.contactErr.name ? "err" : "") + '" autocomplete="name">') +
+        '<input id="c-name" type="text" maxlength="120" value="' + esc(draft.customer.name) + '" class="' + (ui.contactErr.name ? "err" : "") + '" autocomplete="name"' + contactDisabled + '>') +
       field("Телефон", "", null, ui.contactErr.phone ? { message: ui.contactErr.phone } : null,
-        '<input id="c-phone" type="tel" inputmode="tel" value="' + esc(draft.customer.phone) + '" placeholder="+7 900 000-00-00" class="' + (ui.contactErr.phone ? "err" : "") + '" autocomplete="tel">') +
-      field("Комментарий", '<span class="opt">(необязательно)</span>', null, null,
-        '<textarea id="c-comment" rows="3">' + esc(draft.customer.comment || "") + "</textarea>") +
+        '<input id="c-phone" type="tel" inputmode="tel" maxlength="40" value="' + esc(draft.customer.phone) + '" placeholder="+7 900 000-00-00" class="' + (ui.contactErr.phone ? "err" : "") + '" autocomplete="tel"' + contactDisabled + '>') +
+      field("Комментарий", '<span class="opt">(необязательно)</span>', null, ui.contactErr.comment ? { message: ui.contactErr.comment } : null,
+        '<textarea id="c-comment" rows="3" maxlength="2000" class="' + (ui.contactErr.comment ? "err" : "") + '"' + contactDisabled + '>' + esc(draft.customer.comment || "") + "</textarea>") +
       '<p class="privacy-note">Нажимая кнопку, вы соглашаетесь на обработку указанных контактных данных для связи по заявке.</p>';
+    if (ui.contactErr.form && ui.submitMode !== "error") {
+      html += '<div class="callout danger" role="alert">' + esc(ui.contactErr.form) + '</div>';
+    }
     if (!readiness.ready) {
       html += '<div class="callout err-list">' + readiness.problems.map(function (pr) { return "<p>• " + pr + "</p>"; }).join("") + "</div>";
     }
     html += statusHtml;
     var busy = ui.submitMode === "sending";
-    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back4" ' + (busy ? "disabled" : "") + '>Назад</button>' +
+    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back4" ' + (deliveryLocked ? "disabled" : "") + '>Назад</button>' +
       '<button class="btn" data-act="submit" ' + (readiness.ready && !busy ? "" : "disabled") + '>' + (busy ? "Отправляем…" : ctaLabel) + '</button></div>';
     return html;
   }
@@ -1109,7 +1138,7 @@
 
     // top actions
     var hasData = draft.step > 0 || draft.lengthCm != null;
-    $("topActions").innerHTML = hasData ? '<button class="btn-ghost" data-act="resetAsk">Очистить расчёт</button>' : "";
+    $("topActions").innerHTML = hasData ? '<button class="btn-ghost" data-act="resetAsk" ' + (ui.submitMode === "sending" ? "disabled" : "") + '>Очистить расчёт</button>' : "";
 
     // step panel
     var panel = $("stepPanel");
@@ -1247,7 +1276,7 @@
       case "back0": goStep(0); break;
       case "toBow":
         ui.submitAttempted = true;
-        if (validateLength(draft.lengthCm, draft.floorType) || validateWidth(draft.constantWidthCm) || !draft.floorType) { render(); return; }
+        if (validateLength(draft.lengthCm, draft.floorType) || validateWidth(draft.constantWidthCm) || !draft.floorType) { render(); focusFirstInvalidField(); return; }
         ui.submitAttempted = false; goStep(2); break;
       case "back1": goStep(1); break;
       case "addStation": doAddStation(); break;
@@ -1269,13 +1298,13 @@
       case "toOrder": if (draft.dimensionsConfirmed) goStep(5); break;
       case "back4": goStep(4); break;
       case "submit": doSubmit(); break;
-      case "tg": { var otg = buildOrder(); if (otg) copyOrderTextSilently(otg); break; } // ссылка откроет чат сама, текст уже в буфере
+      case "tg": { var otg = buildOrder(); if (otg) copyOrderTextSilently(otg, ui.orderNumber || ui.pendingOrderNumber); break; } // ссылка откроет чат сама, текст уже в буфере
       case "copyText": { var oc = buildOrder(); if (oc) doCopy(t, orderText(oc), "📋 Скопировать текст заявки"); break; }
       case "dlSvg": { var os = buildOrder(); if (os) download("kovrik-" + (ui.orderNumber || os.id) + ".svg", "image/svg+xml", exportSvgFile(os)); break; }
       case "dlJson": { var od = buildOrder(); if (od) download("kovrik-" + (ui.orderNumber || od.id) + ".json", "application/json", orderJson(od)); break; }
       case "newOrder": resetAll(); break;
-      case "resetAsk": ui.confirmReset = true; render(); break;
-      case "resetYes": resetAll(); break;
+      case "resetAsk": if (ui.submitMode !== "sending") { ui.confirmReset = true; render(); } break;
+      case "resetYes": if (ui.submitMode !== "sending") resetAll(); break;
       case "resetNo": ui.confirmReset = false; render(); break;
     }
   });
@@ -1283,20 +1312,40 @@
   function doSubmit() {
     if (ui.submitMode === "sending") return; // защита от двойной отправки
     var errors = {};
-    if (draft.customer.name.trim() === "") errors.name = "Укажите имя";
-    if (draft.customer.phone.trim() === "") errors.phone = "Укажите телефон";
-    ui.contactErr = errors;
+    var customerName = draft.customer.name.trim();
+    var customerPhone = draft.customer.phone.trim();
+    var customerComment = (draft.customer.comment || "").trim();
+    var controlChars = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+    if (customerName === "") errors.name = "Укажите имя";
+    else if (Array.from(customerName).length > 120 || controlChars.test(customerName)) errors.name = "Имя должно быть не длиннее 120 символов";
+    if (customerPhone === "") errors.phone = "Укажите телефон";
+    else {
+      var phoneDigits = customerPhone.replace(/\D/g, "");
+      if (phoneDigits.length < 7 || phoneDigits.length > 15 || !/^[+()\d\s.-]+$/.test(customerPhone)) errors.phone = "Проверьте формат телефона";
+    }
+    if (Array.from(customerComment).length > 2000 || controlChars.test(customerComment)) errors.comment = "Комментарий должен быть не длиннее 2000 символов";
+    if (Array.from((draft.boatName || "").trim()).length > 160) errors.form = "Название лодки должно быть не длиннее 160 символов.";
+    draft.customer.name = customerName;
+    draft.customer.phone = customerPhone;
+    draft.customer.comment = customerComment;
+    save();
     var readiness = orderReadiness(draft);
     var o = buildOrder();
-    if (Object.keys(errors).length > 0 || !readiness.ready || !o || !o.parts.supported) { ui.submitMode = null; render(); return; }
+    if (o && Array.from(orderText(o, ui.pendingOrderNumber || o.id)).length > 4000) errors.form = "Заявка получилась слишком длинной для мессенджеров. Сократите комментарий или обратитесь к менеджеру в Telegram.";
+    ui.contactErr = errors;
+    if (Object.keys(errors).length > 0 || !readiness.ready || !o || !o.parts.supported) { ui.submitMode = null; render(); focusFirstInvalidField(); return; }
 
     // номер брони (idempotency по draft.id) — резервируется один раз, показывается только после успеха/подготовки
+    var submittedDraftId = draft.id;
     var key = "boat-mat-submitted";
     var submitted = {};
     try { submitted = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
-    var orderNumber = submitted[draft.id] || ("BM-" + Date.now().toString(36).toUpperCase());
-    submitted[draft.id] = orderNumber;
+    if (!submitted || typeof submitted !== "object" || Array.isArray(submitted)) submitted = {};
+    var deterministicNumber = "BM-" + submittedDraftId.replace(/^draft-/, "").toUpperCase();
+    var orderNumber = ui.pendingOrderNumber || submitted[submittedDraftId] || deterministicNumber;
+    submitted[submittedDraftId] = orderNumber;
     try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {}
+    ui.pendingOrderNumber = orderNumber;
 
     var endpoint = orderEndpoint();
     if (!endpoint) {
@@ -1311,24 +1360,37 @@
     // Реальная отправка на настроенный endpoint
     ui.submitMode = "sending";
     render();
-    var payload = orderPayload(o);
-    payload.plainText = orderText(o);
+    var payload = orderPayload(o, orderNumber);
+    payload.plainText = orderText(o, orderNumber);
     payload.svg = exportSvgFile(o);
-    payload.idempotencyKey = draft.id;
+    payload.idempotencyKey = submittedDraftId;
     window.OrderSubmission.submitOrder(endpoint, payload, { timeoutMs: 20000 }).then(function (res) {
+      if (draft.id !== submittedDraftId) return;
       if (res && res.success) {
         ui.orderNumber = res.orderNumber || orderNumber;
-        if (res.orderNumber) { submitted[draft.id] = res.orderNumber; try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {} }
+        ui.submitChannels = res.channels || ui.submitChannels;
+        if (res.orderNumber) { submitted[submittedDraftId] = res.orderNumber; try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {} }
         ui.submitMode = "sent";
       } else {
+        if (res && res.channels) ui.submitChannels = res.channels;
+        if (res && res.field === "customer.name") ui.contactErr.name = "Проверьте имя";
+        else if (res && res.field === "customer.phone") ui.contactErr.phone = "Проверьте формат телефона";
+        else if (res && res.field === "customer.comment") ui.contactErr.comment = "Проверьте комментарий";
+        if (res && ["invalid-field", "unknown-field", "unsupported-schema", "confirmation-required", "site-origin-mismatch"].indexOf(res.message) >= 0) {
+          ui.contactErr.form = "Сервис отклонил данные заявки. Проверьте отмеченные поля и попробуйте ещё раз.";
+        }
+        if (res && res.message === "idempotency-conflict") {
+          ui.contactErr.form = "Данные изменились после первой попытки отправки. Начните новый расчёт, чтобы оформить их как отдельную заявку.";
+        }
         ui.submitMode = "error"; // ui.orderNumber не выставлен → остаётся форма с сообщением об ошибке
       }
       render();
+      if (!res || !res.success) focusFirstInvalidField();
     });
   }
-  function copyOrderTextSilently(o) {
+  function copyOrderTextSilently(o, explicitOrderNumber) {
     try {
-      var txt = orderText(o);
+      var txt = orderText(o, explicitOrderNumber);
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(function () {});
     } catch (e) {}
   }

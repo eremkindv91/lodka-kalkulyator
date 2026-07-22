@@ -1,46 +1,49 @@
-# Приём заявок → Telegram (Google Apps Script)
+# Резервный endpoint Google Apps Script → Telegram
 
-Бесплатный бэкенд без своего сервера: принимает заявку с сайта, пишет её в Google-таблицу и присылает менеджеру в Telegram.
+Это бесплатный **Telegram-only** вариант. Для основной схемы с подтверждённой
+доставкой одновременно в Telegram и MAX используйте
+[`../order-service`](../order-service/README.md).
 
-## Шаги
+Google Apps Script оставлен как резервный путь, потому что он быстро
+разворачивается без своего сервера. Для MAX он не подходит: HTTP-клиент Apps
+Script не позволяет добавить пользовательский корневой сертификат, а актуальный
+API MAX на `platform-api2.max.ru` требует добавить сертификат Минцифры в список
+доверенных.
 
-1. **Создайте Telegram-бота**
-   - В Telegram напишите [@BotFather](https://t.me/BotFather) → `/newbot` → задайте имя.
-   - Скопируйте **токен** бота.
-   - Откройте своего бота и нажмите **Start** (иначе бот не сможет вам писать).
+## Настройка
 
-2. **Узнайте свой chat_id**
-   - Напишите боту [@userinfobot](https://t.me/userinfobot) — он пришлёт ваш `id` (число).
-   - Это `TELEGRAM_CHAT_ID` менеджера (@richywonderr).
+1. Создайте Telegram-бота через [@BotFather](https://t.me/BotFather), сохраните
+   токен и нажмите **Start** в диалоге с новым ботом.
+2. Получите числовой `chat_id` менеджера через `getUpdates` или
+   [@userinfobot](https://t.me/userinfobot).
+3. Создайте проект на [script.google.com](https://script.google.com) и вставьте
+   содержимое `Code.gs`.
+4. В **Project Settings → Script properties** добавьте:
 
-3. **Создайте проект Apps Script**
-   - [script.google.com](https://script.google.com) → **New project**.
-   - Вставьте содержимое `Code.gs`.
-
-4. **Добавьте секреты** (Project Settings → **Script properties**):
    | Ключ | Значение |
    |---|---|
    | `TELEGRAM_BOT_TOKEN` | токен из BotFather |
-   | `TELEGRAM_CHAT_ID` | ваш chat_id |
+   | `TELEGRAM_CHAT_ID` | числовой `chat_id` менеджера |
    | `ALLOWED_ORIGIN` | `https://kovrikvlodky.ru` |
-   | `SHEET_ID` | (необязательно) id Google-таблицы для журнала |
+   | `SHEET_ID` | необязательно, id Google-таблицы |
 
-5. **Опубликуйте веб-приложение**
-   - **Deploy → New deployment → Web app**.
-   - *Execute as:* **Me**, *Who has access:* **Anyone**.
-   - Скопируйте URL веб-приложения (`https://script.google.com/macros/s/…/exec`).
+5. **Deploy → New deployment → Web app**:
+   - *Execute as:* **Me**;
+   - *Who has access:* **Anyone**.
+6. Вставьте полученный URL `.../exec` в `js/public-config.js` как
+   `orderEndpoint` и проверьте тестовую заявку.
 
-6. **Впишите URL на сайт**
-   - В `js/public-config.js` укажите:
-     ```js
-     orderEndpoint: "https://script.google.com/macros/s/…/exec"
-     ```
-   - Закоммитьте и запушьте. На сайте кнопка станет **«Отправить заявку»**, и заявки будут приходить вам в Telegram.
+Endpoint возвращает `success: true` только после ответа Telegram API с
+`ok: true`. Повтор одной заявки определяется по `idempotencyKey`; подтверждённая
+заявка повторно в Telegram не отправляется.
 
-## Важно про CORS
+## Ограничения
 
-Сайт отправляет запрос как «простой» (`text/plain`), чтобы не упираться в CORS-preflight. Apps Script принимает заявку и шлёт в Telegram в любом случае. Если браузер по каким-то причинам не сможет прочитать ответ, сайт покажет ошибку — но заявка всё равно может дойти. Для гарантированного подтверждения в браузере надёжнее endpoint с полноценными CORS-заголовками (например, Cloudflare Worker). До настройки endpoint на сайте работает кнопка **«Написать в Telegram @richywonderr»** — заявка уходит вручную одним касанием.
-
-## Секреты
-
-Токен бота и chat_id хранятся **только** в Script Properties, не в этом репозитории и не во фронтенде.
+- MAX здесь не подключён.
+- Apps Script не раскрывает приложению заголовок `Origin`; проверка
+  `ALLOWED_ORIGIN` сверяет поле `site.origin` внутри payload и не является
+  полноценной защитой от подделанного запроса.
+- Из-за редиректов ContentService чтение ответа браузером иногда работает
+  нестабильно. Для коммерческой формы с двумя каналами используйте Node-сервис.
+- Токены и `chat_id` нельзя помещать в `public-config.js` или другой файл
+  GitHub Pages.

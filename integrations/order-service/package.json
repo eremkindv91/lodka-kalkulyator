@@ -1,0 +1,14 @@
+{
+  "name": "eva-order-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test ../../tests/order-service.test.mjs",
+    "check": "node --check app.mjs && node --check config.mjs && node --check delivery.mjs && node --check server.mjs && node --check state.mjs && node --check validation.mjs"
+  }
+}
