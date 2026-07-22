@@ -560,9 +560,25 @@
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
   // фиксированная «чертёжная» палитра для экспорта в файл/картинку (тёмные чернила на белом, не зависит от темы)
-  var PRINT_COLORS = { accent: "#123444", accentInk: "#0e2836", fill: "#eef4f7", active: "#b5651d", muted: "#566973", line: "#8399a6" };
+  var PRINT_COLORS = { accent: "#123444", accentInk: "#0e2836", fill: "#eef4f7", active: "#b5651d", muted: "#566973", line: "#8399a6", seam: "#b42318" };
 
-  function renderSvg(lengthCm, constW, stations, highlight, provisional, colors) {
+  // ширина коврика на высоте y (линейная интерполяция по профилю)
+  function widthAtY(profile, y) {
+    for (var i = 0; i < profile.length - 1; i++) {
+      var a = profile[i], b = profile[i + 1];
+      if (y >= a.y && y <= b.y) { var t = (b.y - a.y) ? (y - a.y) / (b.y - a.y) : 0; return a.w + (b.w - a.w) * t; }
+    }
+    return profile[profile.length - 1].w;
+  }
+  // позиции швов для многочастного коврика: равные доли длины (каждая часть ≤ лимита)
+  function splitYsFor(parts, lengthCm) {
+    if (!parts || !parts.valid || parts.partCount <= 1) return [];
+    var ys = [];
+    for (var k = 1; k < parts.partCount; k++) ys.push(lengthCm * k / parts.partCount);
+    return ys;
+  }
+
+  function renderSvg(lengthCm, constW, stations, highlight, provisional, colors, splitYs) {
     if (lengthCm == null || constW == null || lengthCm <= 0 || constW <= 0) {
       return '<div class="empty-frame">Чертёж появится после ввода длины и ширины</div>';
     }
@@ -588,9 +604,11 @@
       fill: css.getPropertyValue("--accent-soft").trim() || "#e1f0f5",
       active: css.getPropertyValue("--active").trim() || "#d9821a",
       muted: css.getPropertyValue("--muted").trim() || "#6b7f90",
-      line: css.getPropertyValue("--line-strong").trim() || "#b9c8d3"
+      line: css.getPropertyValue("--line-strong").trim() || "#b9c8d3",
+      seam: css.getPropertyValue("--danger").trim() || "#c0392b"
     };
     var cAccent = C.accent, cAccentInk = C.accentInk, cFill = C.fill, cActive = C.active, cMuted = C.muted, cLine = C.line;
+    var cSeam = C.seam || "#c0392b";
 
     var d = poly.map(function (p, i) { return (i === 0 ? "M" : "L") + " " + tX(p.x) + " " + tY(p.y); }).join(" ") + " Z";
     var out = '<svg viewBox="0 0 ' + vbW.toFixed(0) + ' ' + vbH.toFixed(0) + '" role="img" aria-label="Чертёж коврика">';
@@ -620,6 +638,14 @@
     var wc = wActive ? cActive : cAccentInk, wy = Number(tY(lengthCm)) + 14;
     out += '<line x1="' + tX(-constW / 2) + '" y1="' + wy + '" x2="' + tX(constW / 2) + '" y2="' + wy + '" stroke="' + wc + '" stroke-width="' + (wActive ? sw : sw * 0.5).toFixed(2) + '"/>';
     out += '<text x="' + cx + '" y="' + (wy + fs * 1.2).toFixed(1) + '" font-size="' + fs.toFixed(1) + '" font-family="ui-monospace,Menlo,monospace" fill="' + wc + '" font-weight="' + (wActive ? 700 : 500) + '" text-anchor="middle">' + fmt(constW) + ' см</text>';
+    // линии шва для многочастного коврика (ориентировочные — точное место подтверждает менеджер)
+    if (!prov && splitYs && splitYs.length) {
+      splitYs.forEach(function (sy) {
+        var hw = widthAtY(profile, sy) / 2;
+        out += '<line x1="' + tX(-hw) + '" y1="' + tY(sy) + '" x2="' + tX(hw) + '" y2="' + tY(sy) + '" stroke="' + cSeam + '" stroke-width="' + (sw * 1.1).toFixed(2) + '" stroke-dasharray="' + (fs * 0.5).toFixed(1) + ' ' + (fs * 0.35).toFixed(1) + '"/>';
+        out += '<text x="' + cx + '" y="' + (Number(tY(sy)) - fs * 0.5).toFixed(1) + '" font-size="' + (fs * 0.8).toFixed(1) + '" font-family="ui-monospace,Menlo,monospace" fill="' + cSeam + '" font-weight="700" text-anchor="middle">шов ✂</text>';
+      });
+    }
     out += "</svg>";
     return out;
   }
@@ -696,7 +722,7 @@
   function exportSvgFile(o) {
     var stations = o.prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; });
     // фиксированная печатная палитра — чертёж всегда тёмный на белом, независимо от темы экрана
-    var inner = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, stations, null, false, PRINT_COLORS);
+    var inner = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, stations, null, false, PRINT_COLORS, splitYsFor(o.parts, o.prod.lengthCm));
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + inner.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" style="background:#fff" ');
   }
   function orderJson(o) {
@@ -784,14 +810,15 @@
     var prod = input && draft.floorType ? applyFloor(input, draft.floorType) : null;
     if (showProd && prod) {
       return { title: "Производственный контур", lengthCm: prod.lengthCm, constW: prod.constantWidthCm,
-        stations: prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; }) };
+        stations: prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; }),
+        splitYs: splitYsFor(computeParts(prod.lengthCm, MANUFACTURING), prod.lengthCm) };
     }
     return { title: "Чертёж по вашим замерам", lengthCm: draft.lengthCm, constW: draft.constantWidthCm,
-      stations: draft.bowWidths.map(function (w, i) { return { offsetFromBowCm: i * BOW_STEP, widthCm: w }; }) };
+      stations: draft.bowWidths.map(function (w, i) { return { offsetFromBowCm: i * BOW_STEP, widthCm: w }; }), splitYs: [] };
   }
   function renderPreview() {
     var p = previewData();
-    var svg = renderSvg(p.lengthCm, p.constW, p.stations, ui.highlight, undefined);
+    var svg = renderSvg(p.lengthCm, p.constW, p.stations, ui.highlight, undefined, undefined, p.splitYs);
     var d = $("previewDesktop"), m = $("previewMobile"), t = $("previewTitle");
     if (d) d.innerHTML = svg;
     if (m) m.innerHTML = svg;
@@ -946,7 +973,7 @@
     var floorLabel = draft.floorType === "ndnd" ? "НДНД" : "Жёсткое дно";
     var adjLabel = draft.floorType === "ndnd" ? ("ширина +" + o.prod.adjustments.widthDeltaCm + " см, длина " + o.prod.adjustments.lengthDeltaCm + " см") : "без поправок";
 
-    var svg = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, prodStations, null, false);
+    var svg = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, prodStations, null, false, undefined, splitYsFor(o.parts, o.prod.lengthCm));
     var html = '<div class="eyebrow">Шаг 4 из 5</div><h2 class="step-title">Проверка чертежа</h2><div style="height:16px"></div>' +
       '<div class="review-blueprint"><div class="blueprint-title">Итоговый производственный контур</div><div class="blueprint-frame">' + svg + '</div></div>' +
       '<div class="summary">' +
