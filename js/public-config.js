@@ -12,5 +12,7 @@ window.BOAT_MAT_PUBLIC_CONFIG = {
   // orderEndpoint: "https://orders.example.ru/orders",
   orderEndpoint: "",
   siteUrl: "https://kovrikvlodky.ru",
-  telegramContact: "richywonderr"
+  telegramContact: "richywonderr",
+  // Email менеджера для кнопки «Отправить на email» (mailto с текстом заявки).
+  orderEmail: "rwsales.shop@gmail.com"
 };

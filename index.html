@@ -318,13 +318,14 @@
   .price-summary .ps-note { margin-top: 6px; font-size: 13px; color: var(--muted); }
 
   /* бейдж исполнения (цельный / N частей) */
-  .exec-badge { display: flex; align-items: flex-start; gap: 9px; border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius-sm); padding: 11px 14px; margin: 0 0 18px; font-size: 14px; color: var(--ink-soft); }
-  .exec-badge .exec-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); margin-top: 5px; flex-shrink: 0; }
-  .exec-badge.exec-multi .exec-dot { background: var(--active); }
+  /* спокойная информационная подпись о двух частях — прямо под чертежом */
+  .parts-note { margin: 12px 2px 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
 
   .privacy-note { font-size: 12.5px; color: var(--muted); margin: -6px 0 6px; }
   .tg-btn { background: #229ED9; }
   .tg-btn:hover { filter: brightness(1.06); }
+  .contact-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2px; }
+  .email-btn { text-decoration: none; }
 
   .export-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 18px; }
   .draw-save { margin: 4px 0 18px; }
@@ -574,12 +575,16 @@
     }
     return profile[profile.length - 1].w;
   }
-  // позиции швов для многочастного коврика: равные доли длины (каждая часть ≤ лимита)
-  function splitYsFor(parts, lengthCm) {
-    if (!parts || !parts.valid || parts.partCount <= 1) return [];
-    var ys = [];
-    for (var k = 1; k < parts.partCount; k++) ys.push(lengthCm * k / parts.partCount);
-    return ys;
+  // Позиция шва для двухчастного коврика: на уровне последнего замера носа (не по центру!).
+  // Если так привязать нельзя (обе части ≤ лимита не получаются) — шов не показываем.
+  function seamYs(parts, lengthCm, stations) {
+    if (!parts || !parts.valid || parts.partCount !== 2) return [];
+    var maxOff = 0;
+    (stations || []).forEach(function (s) { if (s.offsetFromBowCm > maxOff) maxOff = s.offsetFromBowCm; });
+    var y = maxOff; // уровень последней введённой ширины носа
+    var max = parts.maxSinglePartLengthCm || 210;
+    if (y > 0 && y < lengthCm && y <= max && (lengthCm - y) <= max) return [y];
+    return [];
   }
 
   function renderSvg(lengthCm, constW, stations, highlight, provisional, colors, splitYs) {
@@ -726,7 +731,7 @@
   function exportSvgFile(o) {
     var stations = o.prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; });
     // фиксированная печатная палитра — чертёж всегда тёмный на белом, независимо от темы экрана
-    var inner = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, stations, null, false, PRINT_COLORS, splitYsFor(o.parts, o.prod.lengthCm));
+    var inner = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, stations, null, false, PRINT_COLORS, seamYs(o.parts, o.prod.lengthCm, stations));
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + inner.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" style="background:#fff" ');
   }
   function orderJson(o) {
@@ -813,9 +818,10 @@
     var input = currentInputDims();
     var prod = input && draft.floorType ? applyFloor(input, draft.floorType) : null;
     if (showProd && prod) {
+      var prodStations = prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; });
       return { title: "Производственный контур", lengthCm: prod.lengthCm, constW: prod.constantWidthCm,
-        stations: prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; }),
-        splitYs: splitYsFor(computeParts(prod.lengthCm, MANUFACTURING), prod.lengthCm) };
+        stations: prodStations,
+        splitYs: seamYs(computeParts(prod.lengthCm, MANUFACTURING), prod.lengthCm, prodStations) };
     }
     return { title: "Чертёж по вашим замерам", lengthCm: draft.lengthCm, constW: draft.constantWidthCm,
       stations: draft.bowWidths.map(function (w, i) { return { offsetFromBowCm: i * BOW_STEP, widthCm: w }; }), splitYs: [] };
@@ -990,9 +996,11 @@
     var floorLabel = draft.floorType === "ndnd" ? "НДНД" : "Жёсткое дно";
     var adjLabel = draft.floorType === "ndnd" ? ("ширина +" + o.prod.adjustments.widthDeltaCm + " см, длина " + o.prod.adjustments.lengthDeltaCm + " см") : "без поправок";
 
-    var svg = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, prodStations, null, false, undefined, splitYsFor(o.parts, o.prod.lengthCm));
+    var svg = renderSvg(o.prod.lengthCm, o.prod.constantWidthCm, prodStations, null, false, undefined, seamYs(o.parts, o.prod.lengthCm, prodStations));
     var html = '<div class="eyebrow">Шаг 4 из 5</div><h2 class="step-title">Проверка чертежа</h2><div style="height:16px"></div>' +
-      '<div class="review-blueprint"><div class="blueprint-title">Итоговый производственный контур</div><div class="blueprint-frame">' + svg + '</div></div>' +
+      '<div class="review-blueprint"><div class="blueprint-title">Итоговый производственный контур</div><div class="blueprint-frame">' + svg + '</div>' +
+        partsCaptionHtml(o.parts) +
+      '</div>' +
       '<div class="summary">' +
         sumCell("Внутр. длина лодки", fmt(o.input.lengthCm) + " см") +
         sumCell("Длина коврика", fmt(o.prod.lengthCm) + " см", true) +
@@ -1004,7 +1012,6 @@
         sumCell("Поправки", adjLabel) +
       "</div>" +
       pricingSummaryHtml(o) +
-      partsHtml(o.parts) +
       '<div class="table-scroll"><table><caption>Станции замеров (расстояние от носа)</caption><thead><tr><th>От носа</th><th>Замер лодки</th><th>Коврик</th></tr></thead><tbody>' +
         o.prod.bowStations.map(function (s) { return row(fmt(s.offsetFromBowCm) + " см", fmt(s.inputWidthCm) + " см", fmt(s.productionWidthCm) + " см"); }).join("") +
         row("далее до " + fmt(o.prod.lengthCm) + " см", fmt(o.input.constantWidthCm) + " см", fmt(o.prod.constantWidthCm) + " см") +
@@ -1031,16 +1038,14 @@
     '</div>';
   }
 
-  // Исполнение: цельный / из N частей / требует согласования
-  function partsHtml(parts) {
+  // Спокойная подпись под чертежом. Для длинных ковриков — про две части (без крупного предупреждения).
+  function partsCaptionHtml(parts) {
     if (!parts || !parts.valid) return "";
     if (!parts.supported) {
-      return '<div class="callout danger"><strong>Для этой длины требуется индивидуальное согласование конструкции.</strong><br>Максимальная длина одной части — ' + parts.maxSinglePartLengthCm + ' см. Оформите заявку — менеджер свяжется с вами.</div>';
+      return '<div class="callout danger" style="margin-top:12px"><strong>Для этой длины требуется индивидуальное согласование конструкции.</strong><br>Максимальная длина одной части — ' + parts.maxSinglePartLengthCm + ' см. Оформите заявку — менеджер свяжется с вами.</div>';
     }
-    if (parts.partCount <= 1) {
-      return '<div class="exec-badge"><span class="exec-dot"></span>Исполнение: цельный коврик</div>';
-    }
-    return '<div class="exec-badge exec-multi"><span class="exec-dot"></span>Исполнение: коврик из ' + parts.partCount + ' частей. Максимальная длина одной части — ' + parts.maxSinglePartLengthCm + ' см. Точное расположение соединения подтвердит менеджер.</div>';
+    if (parts.partCount <= 1) return "";
+    return '<p class="parts-note">В зависимости от размеров и формы лодки коврик может изготавливаться из двух частей. Место соединения будет согласовано перед изготовлением.</p>';
   }
 
   function renderOrder() {
@@ -1088,7 +1093,6 @@
 
     var html = '<div class="eyebrow">Шаг 5 из 5</div><h2 class="step-title">Стоимость и заказ</h2><div style="height:16px"></div>' +
       '<div class="price-card">' + priceHtml + "</div>" +
-      partsHtml(o.parts) +
       '<h3 style="font-size:18px;margin:6px 0 14px">Ваши контакты</h3>' +
       field("Имя", "", null, ui.contactErr.name ? { message: ui.contactErr.name } : null,
         '<input id="c-name" type="text" maxlength="120" value="' + esc(draft.customer.name) + '" class="' + (ui.contactErr.name ? "err" : "") + '" autocomplete="name"' + contactDisabled + '>') +
@@ -1116,9 +1120,19 @@
   }
   function telegramButtonHtml(txt) {
     var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
-    if (!c.telegramContact) return "";
-    return '<a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a>' +
-      '<p class="hint" style="margin:8px 0 16px">Откроется чат с менеджером. Текст заявки скопирован в буфер — вставьте его в сообщение (⌘/Ctrl+V) и отправьте.</p>';
+    var btns = [];
+    if (c.telegramContact) {
+      btns.push('<a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a>');
+    }
+    if (c.orderEmail) {
+      var subject = "Заявка на EVA-коврик" + (ui.orderNumber ? " " + ui.orderNumber : "");
+      btns.push('<a class="btn-ghost email-btn" href="mailto:' + esc(c.orderEmail) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(txt) + '">✉ Отправить на email</a>');
+    }
+    if (!btns.length) return "";
+    return '<div class="contact-btns">' + btns.join("") + '</div>' +
+      '<p class="hint" style="margin:8px 0 16px">' +
+      (c.telegramContact ? 'Telegram: откроется чат с менеджером, текст заявки уже в буфере — вставьте (⌘/Ctrl+V) и отправьте. ' : '') +
+      (c.orderEmail ? 'Email: письмо с заявкой откроется в вашей почте.' : '') + '</p>';
   }
 
   // ---------- main render ----------
