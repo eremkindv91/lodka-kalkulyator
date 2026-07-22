@@ -3,21 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Конструктор коврика для лодки</title>
-<meta name="description" content="Снимите размеры пола лодки — получите точный чертёж коврика и готовую заявку. Бесплатно, без регистрации.">
+<title>Калькулятор EVA-коврика для лодки — онлайн-чертёж и стоимость</title>
+<meta name="description" content="Постройте чертёж EVA-коврика по внутренним размерам лодки, автоматически рассчитайте площадь и стоимость, сохраните чертёж и оформите заявку.">
+<link rel="canonical" href="https://kovrikvlodky.ru/">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Конструктор коврика для лодки">
-<meta property="og:description" content="Снимите размеры пола лодки — получите точный чертёж и готовую заявку.">
-<meta property="og:url" content="https://eremkindv91.github.io/lodka-kalkulyator/">
-<meta property="og:image" content="https://eremkindv91.github.io/lodka-kalkulyator/og.jpg">
+<meta property="og:title" content="Калькулятор EVA-коврика для лодки">
+<meta property="og:description" content="Постройте чертёж EVA-коврика по внутренним размерам лодки, рассчитайте стоимость и оформите заявку.">
+<meta property="og:url" content="https://kovrikvlodky.ru/">
+<meta property="og:image" content="https://kovrikvlodky.ru/og.jpg">
 <meta property="og:image:width" content="600">
 <meta property="og:image:height" content="315">
 <meta name="twitter:card" content="summary_large_image">
+<script src="js/pricing-core.js"></script>
+<script src="js/manufacturing-core.js"></script>
+<script src="js/order-submission.js"></script>
+<script src="js/public-config.js"></script>
 <style>html,body{margin:0}</style>
 </head>
 <body>
-<title>Конструктор коврика для лодки</title>
 <style>
   :root {
     --bg: #eaeff3;
@@ -210,9 +214,26 @@
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
   /* intro list */
-  .intro-list { list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 13px; }
+  .intro-list { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 13px; }
   .intro-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-soft); }
   .intro-list .ic { font-size: 19px; line-height: 1.4; flex-shrink: 0; }
+
+  /* hero главной: текст + фото продукта */
+  .hero { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  .hero-copy { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hero-photo { margin: 0; }
+  .hero-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); }
+  .hero-photo figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
+  .hero-photo.ph { position: relative; aspect-ratio: 4 / 3; border-radius: 14px; border: 1px dashed var(--line-strong); background: var(--surface-2); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 14px; padding: 20px; }
+  .hero-photo.ph img, .hero-photo.ph figcaption { display: none; }
+  .hero-photo.ph::before { content: "🛥️ Здесь будет фото готового EVA-коврика в лодке"; max-width: 22ch; line-height: 1.5; }
+  .hero-slot { margin: 0; }
+  .hero-slot--side { display: none; }
+  @media (min-width: 860px) {
+    .hero { grid-template-columns: 1fr minmax(300px, 400px); column-gap: 34px; align-items: start; }
+    .hero-slot--side { display: block; position: sticky; top: 16px; }
+    .hero-slot--inline { display: none; }
+  }
 
   /* station list */
   .stations { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 8px; }
@@ -283,6 +304,23 @@
   .price-card .plabel { font-size: 13px; color: var(--muted); }
   .price-card .pval { font-size: 30px; font-weight: 800; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
   .price-card .pnote { margin-top: 10px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13.5px; padding: 8px 12px; border-radius: 8px; }
+  .price-card .pnote2 { margin-top: 10px; color: var(--muted); font-size: 14px; }
+
+  /* компактная сводка цены на экране проверки */
+  .price-summary { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin: 4px 0 18px; box-shadow: var(--shadow); }
+  .price-summary .ps-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--ink-soft); }
+  .price-summary .ps-price { font-size: 20px; font-weight: 800; color: var(--ink); }
+  .price-summary .ps-price .num { color: var(--accent-ink); }
+  .price-summary .ps-note { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+  /* бейдж исполнения (цельный / N частей) */
+  .exec-badge { display: flex; align-items: flex-start; gap: 9px; border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius-sm); padding: 11px 14px; margin: 0 0 18px; font-size: 14px; color: var(--ink-soft); }
+  .exec-badge .exec-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); margin-top: 5px; flex-shrink: 0; }
+  .exec-badge.exec-multi .exec-dot { background: var(--active); }
+
+  .privacy-note { font-size: 12.5px; color: var(--muted); margin: -6px 0 6px; }
+  .tg-btn { background: #229ED9; }
+  .tg-btn:hover { filter: brightness(1.06); }
 
   .export-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 18px; }
   .draw-save { margin: 4px 0 18px; }
@@ -479,22 +517,17 @@
     return { ready: problems.length === 0, problems: problems };
   }
 
-  // ---------- domain: pricing (не настроен -> цена null) ----------
-  var PRICING = { version: "v1-2026-07", currency: "RUB", pricingMode: "polygon-area" /* materialPricePerM2 не задан */ };
-  function computePricing(cfg, geo, prod, floor) {
-    if (!cfg || cfg.materialPricePerM2 == null) return { preliminaryPrice: null, pricingVersion: cfg ? cfg.version : "not-configured" };
-    var baseArea = cfg.pricingMode === "bounding-rectangle" ? (prod.lengthCm * prod.maxWidthCm) / 10000 : geo.areaM2;
-    var billable = Math.max(baseArea * (1 + (cfg.wastePercent || 0) / 100), cfg.minimumBillableAreaM2 || 0);
-    var base = billable * cfg.materialPricePerM2 + geo.perimeterM * (cfg.edgePricePerM || 0) + (cfg.fixedLaborCost || 0) + (floor === "ndnd" ? (cfg.ndndSurchargeRub || 0) : 0);
-    var withMk = base * (1 + (cfg.markupPercent || 0) / 100);
-    var step = cfg.roundingStepRub;
-    var rounded = step && step > 0 ? Math.ceil(withMk / step) * step : Math.round(withMk);
-    return { preliminaryPrice: Math.max(rounded, cfg.minimumOrderPrice || 0), pricingVersion: cfg.version };
-  }
+  // ---------- domain: pricing / manufacturing (из внешних тестируемых модулей) ----------
+  var PRICING = window.PricingCore.PRICING;
+  var MANUFACTURING = window.ManufacturingCore.MANUFACTURING_CONFIG;
+  var computePricing = window.PricingCore.computePricing; // (cfg, geo) -> pricing result
+  var computeParts = window.ManufacturingCore.computeParts; // (productionLengthCm) -> parts
 
   // ---------- draft state ----------
+  var APP_VERSION = "2026-07-mvp";
   var STORAGE = "boat-mat-draft-v1";
   var BOW_STEP = 10;
+  function rub(n) { return n.toLocaleString("ru-RU") + " ₽"; }
   function emptyDraft() {
     var now = new Date().toISOString();
     return {
@@ -521,7 +554,7 @@
   }
 
   var draft = load();
-  var ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null };
+  var ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, submitMode: null };
 
   // ---------- SVG blueprint ----------
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -605,37 +638,57 @@
     var prod = applyFloor(input, draft.floorType);
     var stations = prod.bowStations.map(function (s) { return { offsetFromBowCm: s.offsetFromBowCm, widthCm: s.productionWidthCm }; });
     var geo = computeGeometry(prod.lengthCm, prod.constantWidthCm, stations);
-    var pricing = computePricing(PRICING, geo, { lengthCm: prod.lengthCm, maxWidthCm: maxW(geo.profile) }, draft.floorType);
-    return { id: draft.id, input: input, prod: prod, geo: geo, pricing: pricing };
+    // цена по площади реального производственного полигона (geo.areaM2 — источник истины)
+    var pricing = computePricing(PRICING, geo);
+    var parts = computeParts(prod.lengthCm, MANUFACTURING);
+    return { id: draft.id, input: input, prod: prod, geo: geo, pricing: pricing, parts: parts };
   }
   function orderText(o) {
     var FL = { rigid: "Жёсткое дно", ndnd: "НДНД (надувное дно низкого давления)" };
     var L = [];
-    L.push("ЗАЯВКА НА КОВРИК ДЛЯ ЛОДКИ");
+    L.push("ЗАЯВКА НА EVA-КОВРИК ДЛЯ ЛОДКИ");
     L.push("Номер: " + (ui.orderNumber || o.id));
+    L.push("");
     if (draft.boatName) L.push("Лодка: " + draft.boatName);
     L.push("Тип дна: " + FL[draft.floorType]);
     L.push("");
-    L.push("РАЗМЕРЫ ЛОДКИ (замеры клиента):");
-    L.push("  Длина: " + fmt(o.input.lengthCm) + " см");
-    L.push("  Постоянная ширина: " + fmt(o.input.constantWidthCm) + " см");
-    o.input.bowStations.forEach(function (s) { L.push("  Нос, " + fmt(s.offsetFromBowCm) + " см от верха: " + fmt(s.inputWidthCm) + " см"); });
+    L.push("РАЗМЕРЫ ЛОДКИ — ЗАМЕРЫ КЛИЕНТА");
+    L.push("Внутренняя длина лодки: " + fmt(o.input.lengthCm) + " см");
+    L.push("Постоянная внутренняя ширина: " + fmt(o.input.constantWidthCm) + " см");
+    o.input.bowStations.forEach(function (s) { L.push("Нос, " + fmt(s.offsetFromBowCm) + " см от верхней точки: " + fmt(s.inputWidthCm) + " см"); });
     L.push("");
-    L.push("РАЗМЕРЫ КОВРИКА (производственные):");
-    L.push("  Длина: " + fmt(o.prod.lengthCm) + " см");
-    L.push("  Постоянная ширина: " + fmt(o.prod.constantWidthCm) + " см");
-    o.prod.bowStations.forEach(function (s) { L.push("  Нос, " + fmt(s.offsetFromBowCm) + " см от верха: " + fmt(s.productionWidthCm) + " см"); });
+    L.push("ПРОИЗВОДСТВЕННЫЕ РАЗМЕРЫ КОВРИКА");
+    L.push("Длина коврика: " + fmt(o.prod.lengthCm) + " см");
+    L.push("Постоянная ширина коврика: " + fmt(o.prod.constantWidthCm) + " см");
+    o.prod.bowStations.forEach(function (s) { L.push("Нос, " + fmt(s.offsetFromBowCm) + " см от верхней точки: " + fmt(s.productionWidthCm) + " см"); });
     var a = o.prod.adjustments;
-    L.push("  Поправки: ширина " + (a.widthDeltaCm >= 0 ? "+" : "") + a.widthDeltaCm + " см, длина " + (a.lengthDeltaCm >= 0 ? "+" : "") + a.lengthDeltaCm + " см");
+    L.push("Поправки на тип дна: ширина " + (a.widthDeltaCm >= 0 ? "+" : "") + a.widthDeltaCm + " см, длина " + (a.lengthDeltaCm >= 0 ? "+" : "") + a.lengthDeltaCm + " см");
     L.push("");
-    L.push("Площадь: " + o.geo.areaM2.toFixed(2) + " м²");
-    L.push("Периметр: " + o.geo.perimeterM.toFixed(2) + " м");
-    L.push(o.pricing.preliminaryPrice != null ? ("Предварительная цена: " + o.pricing.preliminaryPrice.toLocaleString("ru-RU") + " ₽") : "Цена: будет рассчитана менеджером");
+    L.push("ИСПОЛНЕНИЕ");
+    if (o.parts.partCount <= 1) {
+      L.push("Количество частей: 1 (цельный коврик)");
+    } else {
+      L.push("Количество частей: " + o.parts.partCount);
+      L.push("Максимальная длина одной части: " + o.parts.maxSinglePartLengthCm + " см");
+      L.push("Место соединения: требуется подтверждение менеджера");
+    }
+    if (!o.parts.supported) L.push("Внимание: для этой длины требуется индивидуальное согласование конструкции.");
     L.push("");
-    L.push("КОНТАКТЫ:");
-    L.push("  Имя: " + draft.customer.name);
-    L.push("  Телефон: " + draft.customer.phone);
-    if (draft.customer.comment) L.push("  Комментарий: " + draft.customer.comment);
+    L.push("РАСЧЁТ");
+    L.push("Площадь коврика: " + o.geo.areaM2.toFixed(2).replace(".", ",") + " м²");
+    if (o.pricing.valid) {
+      L.push("Стоимость: " + o.pricing.finalPriceRub.toLocaleString("ru-RU") + " ₽");
+      L.push("Доставка: по тарифам транспортной компании");
+      L.push("Ориентир по доставке: " + o.pricing.deliveryMinRub + "–" + o.pricing.deliveryMaxRub + " ₽");
+      L.push("Версия расчёта: " + o.pricing.pricingVersion);
+    } else {
+      L.push("Стоимость: уточняется менеджером");
+    }
+    L.push("");
+    L.push("КОНТАКТЫ");
+    L.push("Имя: " + draft.customer.name);
+    L.push("Телефон: " + draft.customer.phone);
+    if (draft.customer.comment) L.push("Комментарий: " + draft.customer.comment);
     L.push("");
     L.push("Размеры подтверждены клиентом: " + (draft.dimensionsConfirmed ? "да" : "нет"));
     return L.join("\n");
@@ -647,16 +700,35 @@
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + inner.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" style="background:#fff" ');
   }
   function orderJson(o) {
-    return JSON.stringify({
+    return JSON.stringify(orderPayload(o), null, 2);
+  }
+  // Публичный payload заявки (без себестоимости, маржи и ставок).
+  function orderPayload(o) {
+    return {
+      schemaVersion: 2,
       id: ui.orderNumber || o.id,
-      boat: { name: draft.boatName, floorType: draft.floorType },
+      createdAt: new Date().toISOString(),
+      site: { origin: (window.BOAT_MAT_PUBLIC_CONFIG && window.BOAT_MAT_PUBLIC_CONFIG.siteUrl) || location.origin, appVersion: APP_VERSION },
+      boat: { name: draft.boatName || null, floorType: draft.floorType },
       inputDimensions: o.input,
       productionDimensions: o.prod,
       geometry: { areaM2: o.geo.areaM2, perimeterM: o.geo.perimeterM, polygonPointsCm: o.geo.polygonPointsCm },
-      pricing: { currency: "RUB", pricingVersion: o.pricing.pricingVersion, preliminaryPrice: o.pricing.preliminaryPrice },
+      manufacturing: {
+        maxSinglePartLengthCm: o.parts.maxSinglePartLengthCm,
+        partCount: o.parts.partCount,
+        splitPositionConfirmed: o.parts.splitPositionConfirmed,
+        requiresManagerSplitConfirmation: o.parts.requiresManagerSplitConfirmation
+      },
+      pricing: o.pricing.valid ? {
+        currency: "RUB",
+        pricingVersion: o.pricing.pricingVersion,
+        areaM2: o.pricing.areaM2,
+        finalPriceRub: o.pricing.finalPriceRub,
+        deliveryEstimateRub: { min: o.pricing.deliveryMinRub, max: o.pricing.deliveryMaxRub }
+      } : { currency: "RUB", pricingVersion: PRICING.version, finalPriceRub: null },
       customer: draft.customer,
       consent: { dimensionsConfirmed: draft.dimensionsConfirmed }
-    }, null, 2);
+    };
   }
   function dataUri(mime, content) { return "data:" + mime + ";charset=utf-8," + encodeURIComponent(content); }
   // скачивание файла: Blob работает на обычном хостинге (GitHub Pages и т.п.); в песочнице артефакта фолбэк на data:-ссылку
@@ -703,7 +775,7 @@
   // ---------- rendering helpers ----------
   var $ = function (id) { return document.getElementById(id); };
   function goStep(n) { draft.step = n; save(); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function resetAll() { draft = emptyDraft(); ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null }; save(); render(); }
+  function resetAll() { draft = emptyDraft(); ui = { highlight: null, editingIndex: null, currentRaw: "", currentErr: null, confirmWidth: null, confirmRestart: false, confirmReset: false, submitAttempted: false, contactErr: {}, orderNumber: null, submitMode: null }; save(); render(); }
 
   // ---------- previews ----------
   function previewData() {
@@ -733,13 +805,28 @@
       ["⬇️", "Нос лодки измеряется сверху вниз с шагом 10 см."],
       ["↔️", "Ширина измеряется поперёк лодки — по прямой, не по дуге."],
       ["📐", "Чертёж меняется сразу после ввода каждого размера."],
-      ["💾", "Данные сохраняются автоматически — можно продолжить позже."],
-      ["💬", "Стоимость предварительная — окончательная после проверки менеджером."]
+      ["🧮", "Стоимость рассчитывается автоматически по площади готового чертежа. Доставка оплачивается отдельно."],
+      ["💾", "Данные сохраняются автоматически — можно продолжить позже."]
     ];
-    return '<h2 class="step-title">Конструктор коврика для лодки</h2>' +
-      '<p class="lead">Снимите размеры пола лодки, введите их шаг за шагом — и получите точный чертёж коврика с расчётом и готовой заявкой.</p>' +
-      '<ul class="intro-list">' + pts.map(function (p) { return '<li><span class="ic">' + p[0] + '</span><span>' + p[1] + '</span></li>'; }).join("") + "</ul>" +
-      '<button class="btn" data-act="start">Начать замеры →</button>';
+    // Фото продукта. Если файла нет — сработает onerror и покажется аккуратный плейсхолдер.
+    // Две фигуры: боковая (desktop) и компактная (mobile, между описанием и кнопкой).
+    function photo(slotCls) {
+      return '<div class="hero-slot ' + slotCls + '"><figure class="hero-photo">' +
+        '<img src="assets/eva-mat-in-boat.webp" alt="Готовый EVA-коврик, установленный в лодке" width="760" height="570" decoding="async" ' +
+        'onerror="this.closest(&quot;figure&quot;).classList.add(&quot;ph&quot;)">' +
+        '<figcaption>Готовый EVA-коврик в лодке</figcaption>' +
+      '</figure></div>';
+    }
+    return '<div class="hero">' +
+      '<div class="hero-copy">' +
+        '<h2 class="step-title">EVA-коврик для лодки по вашим размерам</h2>' +
+        '<p class="lead">Постройте чертёж коврика по внутренним размерам лодки, сразу узнайте площадь и стоимость, сохраните чертёж и оформите заявку. Перед изготовлением менеджер проверит корректность размеров и возможность производства.</p>' +
+        photo("hero-slot--inline") +
+        '<ul class="intro-list">' + pts.map(function (p) { return '<li><span class="ic">' + p[0] + '</span><span>' + p[1] + '</span></li>'; }).join("") + "</ul>" +
+        '<div><button class="btn" data-act="start">Начать замеры →</button></div>' +
+      '</div>' +
+      photo("hero-slot--side") +
+      '</div>';
   }
 
   function renderBasic() {
@@ -754,9 +841,9 @@
       '<div style="height:18px"></div>' +
       field("Название или модель лодки", '<span class="opt">(необязательно)</span>', null, null,
         '<div class="input-wrap"><input id="f-name" type="text" value="' + esc(draft.boatName) + '" placeholder="Например: Кайман N-330" style="font-family:var(--sans)"></div>') +
-      field("Общая длина внутреннего коврика", "", "Измерьте пол лодки от верхней точки носа до кормы по центру", lenIssue,
+      field("Внутренняя длина лодки", "", "Измерьте внутреннюю длину пола лодки по центру — от верхней точки носа до кормы.", lenIssue,
         '<div class="input-wrap"><input id="f-length" type="text" inputmode="decimal" value="' + (draft.lengthCm != null ? esc(fmt(draft.lengthCm)) : "") + '" placeholder="220" class="' + (lenIssue ? "err" : "") + '"><span class="unit">см</span></div>') +
-      field("Ширина прямой центральной части", "", "Измерьте ширину пола поперёк лодки там, где она постоянная", widIssue,
+      field("Постоянная внутренняя ширина", "", "Измерьте ширину пола поперёк лодки там, где она постоянная", widIssue,
         '<div class="input-wrap"><input id="f-width" type="text" inputmode="decimal" value="' + (draft.constantWidthCm != null ? esc(fmt(draft.constantWidthCm)) : "") + '" placeholder="80" class="' + (widIssue ? "err" : "") + '"><span class="unit">см</span></div>') +
       '<div class="field"><span class="field-legend">Тип дна лодки</span><div class="radio-grid">' +
         floors.map(function (f) {
@@ -835,7 +922,7 @@
       }).join("") + "</div></div>";
     if (input && prod) {
       html += '<div class="table-scroll"><table><thead><tr><th>Параметр</th><th>Размеры лодки</th><th>Размеры коврика</th></tr></thead><tbody>' +
-        row("Общая длина", fmt(input.lengthCm) + " см", fmt(prod.lengthCm) + " см") +
+        row("Внутренняя длина лодки / длина коврика", fmt(input.lengthCm) + " см", fmt(prod.lengthCm) + " см") +
         row("Постоянная ширина", fmt(input.constantWidthCm) + " см", fmt(prod.constantWidthCm) + " см") +
         prod.bowStations.map(function (s) { return row("Нос, " + fmt(s.offsetFromBowCm) + " см", fmt(s.inputWidthCm) + " см", fmt(s.productionWidthCm) + " см"); }).join("") +
         "</tbody></table></div>";
@@ -863,15 +950,17 @@
     var html = '<div class="eyebrow">Шаг 4 из 5</div><h2 class="step-title">Проверка чертежа</h2><div style="height:16px"></div>' +
       '<div class="review-blueprint"><div class="blueprint-title">Итоговый производственный контур</div><div class="blueprint-frame">' + svg + '</div></div>' +
       '<div class="summary">' +
-        sumCell("Длина лодки", fmt(o.input.lengthCm) + " см") +
+        sumCell("Внутр. длина лодки", fmt(o.input.lengthCm) + " см") +
         sumCell("Длина коврика", fmt(o.prod.lengthCm) + " см", true) +
         sumCell("Макс. ширина лодки", fmt(maxW(inputProfile)) + " см") +
         sumCell("Макс. ширина коврика", fmt(maxW(prodProfile)) + " см", true) +
-        sumCell("Площадь", o.geo.areaM2.toFixed(2) + " м²") +
-        sumCell("Периметр", o.geo.perimeterM.toFixed(2) + " м") +
+        sumCell("Площадь коврика", o.geo.areaM2.toFixed(2).replace(".", ",") + " м²") +
+        sumCell("Периметр", o.geo.perimeterM.toFixed(2).replace(".", ",") + " м") +
         sumCell("Тип дна", floorLabel) +
         sumCell("Поправки", adjLabel) +
       "</div>" +
+      pricingSummaryHtml(o) +
+      partsHtml(o.parts) +
       '<div class="table-scroll"><table><caption>Станции замеров (расстояние от носа)</caption><thead><tr><th>От носа</th><th>Замер лодки</th><th>Коврик</th></tr></thead><tbody>' +
         o.prod.bowStations.map(function (s) { return row(fmt(s.offsetFromBowCm) + " см", fmt(s.inputWidthCm) + " см", fmt(s.productionWidthCm) + " см"); }).join("") +
         row("далее до " + fmt(o.prod.lengthCm) + " см", fmt(o.input.constantWidthCm) + " см", fmt(o.prod.constantWidthCm) + " см") +
@@ -879,10 +968,36 @@
     if (warns.length) html += '<div class="callout warn">' + warns.map(function (w) { return "⚠️ " + w; }).join("<br>") + "</div>";
     html += '<div class="btn-row" style="margin-bottom:16px"><button class="btn-ghost" data-act="edit1">Изменить основные размеры</button><button class="btn-ghost" data-act="edit2">Изменить замеры носа</button><button class="btn-ghost" data-act="edit3">Изменить тип дна</button></div>';
     html += '<label class="consent"><input type="checkbox" id="consent" ' + (draft.dimensionsConfirmed ? "checked" : "") + '><span>Я проверил размеры и понимаю, что изделие будет изготовлено по указанным значениям</span></label>';
-    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back3">Назад</button><button class="btn" data-act="toOrder" ' + (draft.dimensionsConfirmed ? "" : "disabled") + '>Дальше: стоимость и заказ →</button></div>';
+    var canOrder = draft.dimensionsConfirmed && o.parts.supported;
+    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back3">Назад</button><button class="btn" data-act="toOrder" ' + (canOrder ? "" : "disabled") + '>Дальше: стоимость и заказ →</button></div>';
     return html;
   }
   function sumCell(k, v, accent) { return '<div class="sum-cell ' + (accent ? "accent" : "") + '"><div class="k">' + k + '</div><div class="v">' + v + "</div></div>"; }
+
+  // Компактная сводка стоимости (без раскрытия себестоимости/маржи)
+  function pricingSummaryHtml(o) {
+    var p = o.pricing;
+    if (!p.valid) {
+      return '<div class="callout warn">Стоимость временно недоступна. Отправьте заявку для уточнения.</div>';
+    }
+    return '<div class="price-summary">' +
+      '<div class="ps-row"><span>Площадь коврика</span><span class="num">' + o.geo.areaM2.toFixed(2).replace(".", ",") + ' м²</span></div>' +
+      '<div class="ps-row ps-price"><span>Стоимость</span><span class="num">' + rub(p.finalPriceRub) + '</span></div>' +
+      '<div class="ps-note">Доставка оплачивается отдельно по тарифам транспортной компании.</div>' +
+    '</div>';
+  }
+
+  // Исполнение: цельный / из N частей / требует согласования
+  function partsHtml(parts) {
+    if (!parts || !parts.valid) return "";
+    if (!parts.supported) {
+      return '<div class="callout danger"><strong>Для этой длины требуется индивидуальное согласование конструкции.</strong><br>Максимальная длина одной части — ' + parts.maxSinglePartLengthCm + ' см. Оформите заявку — менеджер свяжется с вами.</div>';
+    }
+    if (parts.partCount <= 1) {
+      return '<div class="exec-badge"><span class="exec-dot"></span>Исполнение: цельный коврик</div>';
+    }
+    return '<div class="exec-badge exec-multi"><span class="exec-dot"></span>Исполнение: коврик из ' + parts.partCount + ' частей. Максимальная длина одной части — ' + parts.maxSinglePartLengthCm + ' см. Точное расположение соединения подтвердит менеджер.</div>';
+  }
 
   function renderOrder() {
     var o = buildOrder();
@@ -890,36 +1005,66 @@
 
     if (ui.orderNumber) {
       var txt = orderText(o);
-      return '<h2 class="step-title">Заявка оформлена ✅</h2><div style="height:14px"></div>' +
-        '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Номер вашей заявки: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Отправьте заявку производителю: скопируйте текст и скачайте чертёж.</p></div>' +
-        '<div class="export-actions"><button class="btn" data-act="copyText">📋 Скопировать текст заявки</button>' +
+      var priceLine = o.pricing.valid
+        ? '<p style="margin:8px 0 0">Стоимость заказа: <strong class="num">' + rub(o.pricing.finalPriceRub) + '</strong>. Доставка рассчитывается отдельно.</p>'
+        : '';
+      var sentBanner = ui.submitMode === "sent"
+        ? '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Заявка отправлена ✅ Номер: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Менеджер свяжется с вами по указанному телефону.' + (o.pricing.valid ? ' Стоимость заказа: ' + rub(o.pricing.finalPriceRub) + '.' : '') + '</p></div>'
+        : '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Заявка готова ✅ Номер: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Отправьте её менеджеру удобным способом — текст и чертёж ниже.' + priceLine + '</p></div>';
+      return '<h2 class="step-title">' + (ui.submitMode === "sent" ? "Заявка отправлена ✅" : "Заявка готова ✅") + '</h2><div style="height:14px"></div>' +
+        sentBanner +
+        telegramButtonHtml(txt) +
+        '<div class="export-actions"><button class="btn-ghost" data-act="copyText">📋 Скопировать текст заявки</button>' +
         '<button class="btn-ghost" data-act="dlSvg">⬇ Скачать чертёж SVG</button>' +
         '<button class="btn-ghost" data-act="dlJson">⬇ Скачать данные JSON</button></div>' +
-        '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(ui.orderNumber) + '"><p class="hint">Если на телефоне «Скачать» не сработало — сохраните этот чертёж картинкой: <strong>долгое нажатие</strong> → «Сохранить», или <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
+        '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(ui.orderNumber) + '"><p class="hint">Чертёж можно сохранить картинкой: на телефоне — <strong>долгое нажатие</strong> → «Сохранить», на компьютере — <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
         '<details class="order-text"><summary>Текст заявки (нажмите, чтобы посмотреть)</summary><pre>' + esc(txt) + '</pre></details>' +
         '<div class="actions-footer"><button class="btn-ghost" data-act="newOrder">Новый расчёт</button></div>';
     }
 
-    var price = o.pricing.preliminaryPrice;
     var readiness = orderReadiness(draft);
-    var priceHtml = price != null
-      ? '<div class="plabel">Предварительная стоимость</div><div class="pval">' + price.toLocaleString("ru-RU") + ' ₽</div><div class="pnote">Предварительная цена. Окончательная — после проверки чертежа менеджером.</div>'
-      : '<p style="margin:0;color:var(--ink-soft)">💬 Стоимость рассчитает менеджер после получения заявки. Все размеры и чертёж прикрепляются автоматически.</p>';
+    var p = o.pricing;
+    var priceHtml = p.valid
+      ? '<div class="plabel">Стоимость</div><div class="pval">' + rub(p.finalPriceRub) + '</div>' +
+        '<div class="pnote2">+ доставка по тарифам транспортной компании <span class="num">(обычно ' + p.deliveryMinRub + '–' + p.deliveryMaxRub + ' ₽)</span></div>'
+      : '<p style="margin:0;color:var(--ink-soft)">Стоимость временно недоступна. Отправьте заявку для уточнения.</p>';
+
+    var endpoint = orderEndpoint();
+    var ctaLabel = endpoint ? "Отправить заявку" : "Подготовить заявку";
+    var statusHtml = "";
+    if (ui.submitMode === "sending") statusHtml = '<div class="callout info" role="status" aria-live="polite">Отправляем…</div>';
+    else if (ui.submitMode === "error") statusHtml = '<div class="callout danger" role="alert">Не удалось отправить заявку. Проверьте интернет и попробуйте ещё раз — или подготовьте заявку и отправьте менеджеру вручную.</div>';
 
     var html = '<div class="eyebrow">Шаг 5 из 5</div><h2 class="step-title">Стоимость и заказ</h2><div style="height:16px"></div>' +
       '<div class="price-card">' + priceHtml + "</div>" +
-      '<h3 style="font-size:18px;margin-bottom:14px">Ваши контакты</h3>' +
+      partsHtml(o.parts) +
+      '<h3 style="font-size:18px;margin:6px 0 14px">Ваши контакты</h3>' +
       field("Имя", "", null, ui.contactErr.name ? { message: ui.contactErr.name } : null,
         '<input id="c-name" type="text" value="' + esc(draft.customer.name) + '" class="' + (ui.contactErr.name ? "err" : "") + '" autocomplete="name">') +
       field("Телефон", "", null, ui.contactErr.phone ? { message: ui.contactErr.phone } : null,
         '<input id="c-phone" type="tel" inputmode="tel" value="' + esc(draft.customer.phone) + '" placeholder="+7 900 000-00-00" class="' + (ui.contactErr.phone ? "err" : "") + '" autocomplete="tel">') +
       field("Комментарий", '<span class="opt">(необязательно)</span>', null, null,
-        '<textarea id="c-comment" rows="3">' + esc(draft.customer.comment || "") + "</textarea>");
+        '<textarea id="c-comment" rows="3">' + esc(draft.customer.comment || "") + "</textarea>") +
+      '<p class="privacy-note">Нажимая кнопку, вы соглашаетесь на обработку указанных контактных данных для связи по заявке.</p>';
     if (!readiness.ready) {
-      html += '<div class="callout err-list">' + readiness.problems.map(function (p) { return "<p>• " + p + "</p>"; }).join("") + "</div>";
+      html += '<div class="callout err-list">' + readiness.problems.map(function (pr) { return "<p>• " + pr + "</p>"; }).join("") + "</div>";
     }
-    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back4">Назад</button><button class="btn" data-act="submit" ' + (readiness.ready ? "" : "disabled") + '>Заказать</button></div>';
+    html += statusHtml;
+    var busy = ui.submitMode === "sending";
+    html += '<div class="actions-footer"><button class="btn-ghost" data-act="back4" ' + (busy ? "disabled" : "") + '>Назад</button>' +
+      '<button class="btn" data-act="submit" ' + (readiness.ready && !busy ? "" : "disabled") + '>' + (busy ? "Отправляем…" : ctaLabel) + '</button></div>';
     return html;
+  }
+
+  function orderEndpoint() {
+    var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
+    return (c.orderEndpoint || "").trim();
+  }
+  function telegramButtonHtml(txt) {
+    var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
+    if (!c.telegramContact) return "";
+    return '<a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a>' +
+      '<p class="hint" style="margin:8px 0 16px">Откроется чат с менеджером. Текст заявки скопирован в буфер — вставьте его в сообщение (⌘/Ctrl+V) и отправьте.</p>';
   }
 
   // ---------- main render ----------
@@ -1097,6 +1242,7 @@
       case "toOrder": if (draft.dimensionsConfirmed) goStep(5); break;
       case "back4": goStep(4); break;
       case "submit": doSubmit(); break;
+      case "tg": { var otg = buildOrder(); if (otg) copyOrderTextSilently(otg); break; } // ссылка откроет чат сама, текст уже в буфере
       case "copyText": { var oc = buildOrder(); if (oc) doCopy(t, orderText(oc), "📋 Скопировать текст заявки"); break; }
       case "dlSvg": { var os = buildOrder(); if (os) download("kovrik-" + (ui.orderNumber || os.id) + ".svg", "image/svg+xml", exportSvgFile(os)); break; }
       case "dlJson": { var od = buildOrder(); if (od) download("kovrik-" + (ui.orderNumber || od.id) + ".json", "application/json", orderJson(od)); break; }
@@ -1108,19 +1254,56 @@
   });
 
   function doSubmit() {
+    if (ui.submitMode === "sending") return; // защита от двойной отправки
     var errors = {};
     if (draft.customer.name.trim() === "") errors.name = "Укажите имя";
     if (draft.customer.phone.trim() === "") errors.phone = "Укажите телефон";
     ui.contactErr = errors;
     var readiness = orderReadiness(draft);
-    if (Object.keys(errors).length > 0 || !readiness.ready) { render(); return; }
-    // защита от повторной отправки: номер присваивается один раз
+    var o = buildOrder();
+    if (Object.keys(errors).length > 0 || !readiness.ready || !o || !o.parts.supported) { ui.submitMode = null; render(); return; }
+
+    // номер брони (idempotency по draft.id) — резервируется один раз, показывается только после успеха/подготовки
     var key = "boat-mat-submitted";
     var submitted = {};
     try { submitted = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
-    if (submitted[draft.id]) ui.orderNumber = submitted[draft.id];
-    else { ui.orderNumber = "BM-" + Date.now().toString(36).toUpperCase(); submitted[draft.id] = ui.orderNumber; try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {} }
+    var orderNumber = submitted[draft.id] || ("BM-" + Date.now().toString(36).toUpperCase());
+    submitted[draft.id] = orderNumber;
+    try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {}
+
+    var endpoint = orderEndpoint();
+    if (!endpoint) {
+      // Честный режим без бэкенда: заявка ПОДГОТОВЛЕНА (не «отправлена»). Текст кладём в буфер для Telegram.
+      ui.orderNumber = orderNumber;
+      ui.submitMode = "prepared";
+      copyOrderTextSilently(o);
+      render();
+      return;
+    }
+
+    // Реальная отправка на настроенный endpoint
+    ui.submitMode = "sending";
     render();
+    var payload = orderPayload(o);
+    payload.plainText = orderText(o);
+    payload.svg = exportSvgFile(o);
+    payload.idempotencyKey = draft.id;
+    window.OrderSubmission.submitOrder(endpoint, payload, { timeoutMs: 20000 }).then(function (res) {
+      if (res && res.success) {
+        ui.orderNumber = res.orderNumber || orderNumber;
+        if (res.orderNumber) { submitted[draft.id] = res.orderNumber; try { localStorage.setItem(key, JSON.stringify(submitted)); } catch (e) {} }
+        ui.submitMode = "sent";
+      } else {
+        ui.submitMode = "error"; // ui.orderNumber не выставлен → остаётся форма с сообщением об ошибке
+      }
+      render();
+    });
+  }
+  function copyOrderTextSilently(o) {
+    try {
+      var txt = orderText(o);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(function () {});
+    } catch (e) {}
   }
   function doCopy(btn, text, label) {
     function done() { btn.textContent = "✓ Скопировано"; setTimeout(function () { btn.textContent = label; }, 2000); }
