@@ -2,43 +2,45 @@
  * Ядро расчёта стоимости EVA-коврика. Чистые функции, без DOM.
  * Работает и в браузере (window.PricingCore), и в Node (module.exports) — для тестов.
  *
- * Формула:
- *   cost = area(м²) × materialCostPerM2Rub + hardwareCostRub
- *   deductionRate = taxRate + advertisingRate + acquiringRate
- *   netCoefficient = 1 − deductionRate
- *   rawPrice = (cost + targetProfitRub) / netCoefficient
- *   finalPrice = округление вверх до значения, оканчивающегося на 90
+ * Формула (единственная, без наценок/минималок/округления до сотен/доставки в цене):
+ *   base = area(м²) × 1000 + 45 (фурнитура) + 800 (чистая прибыль)
+ *   netCoefficient = 1 − (0.08 налог + 0.05 реклама + 0.025 эквайринг) = 0.845
+ *   price = round(base / netCoefficient)   // Math.round до целого рубля
  */
 (function (root) {
   "use strict";
 
   // ЕДИНСТВЕННЫЙ источник числовых параметров. Не дублировать эти числа в другом коде.
   var PRICING = {
-    version: "v2-2026-07",
+    version: "v3-2026-07",
     currency: "RUB",
     pricingMode: "polygon-area",
 
     materialCostPerM2Rub: 1000,
     hardwareCostRub: 45,
-    targetProfitRub: 1200,
+    targetProfitRub: 800,
 
     taxRate: 0.08,
-    advertisingRate: 0.10,
+    advertisingRate: 0.05,
     acquiringRate: 0.025,
 
+    // Ориентир по доставке (в цену НЕ входит, только информационная подпись).
     deliveryMinRub: 800,
     deliveryMaxRub: 1000
   };
 
-  /** Округление цены вверх до ближайшего числа, оканчивающегося на 90 (целые рубли). */
-  function roundPriceUpTo90(value) {
-    if (typeof value !== "number" || !isFinite(value) || value <= 0) {
-      throw new Error("roundPriceUpTo90: ожидается положительное конечное число");
-    }
-    // эпсилон гасит ошибку плавающей точки, чтобы уже корректное X..90 не подскочило на сотню
-    var steps = Math.ceil((value - 90) / 100 - 1e-9);
-    if (steps < 0) steps = 0;
-    return steps * 100 + 90;
+  /**
+   * Чистая функция цены по площади (м²). Возвращает целые рубли или 0 при некорректном входе.
+   * price = round( (area×1000 + 45 + 800) / 0.845 )
+   */
+  function calculateMatPrice(areaM2, cfg) {
+    cfg = cfg || PRICING;
+    if (!Number.isFinite(areaM2) || areaM2 <= 0) return 0;
+    var totalRate = cfg.taxRate + cfg.advertisingRate + cfg.acquiringRate;
+    var netRevenueCoefficient = 1 - totalRate;
+    if (!(netRevenueCoefficient > 0)) return 0;
+    var baseAmount = areaM2 * cfg.materialCostPerM2Rub + cfg.hardwareCostRub + cfg.targetProfitRub;
+    return Math.round(baseAmount / netRevenueCoefficient);
   }
 
   function isRate(x) {
@@ -81,10 +83,8 @@
     var costRub = materialCostRub + cfg.hardwareCostRub;
     if (costRub < 0) return fail("Отрицательная себестоимость");
 
-    var rawPriceRub = (costRub + cfg.targetProfitRub) / netCoefficient;
-    if (!isFinite(rawPriceRub) || rawPriceRub <= 0) return fail("Некорректная расчётная цена");
-
-    var finalPriceRub = roundPriceUpTo90(rawPriceRub);
+    var finalPriceRub = calculateMatPrice(areaM2, cfg);
+    if (!isFinite(finalPriceRub) || finalPriceRub <= 0) return fail("Некорректная расчётная цена");
 
     return {
       valid: true,
@@ -101,14 +101,13 @@
       acquiringRate: cfg.acquiringRate,
       deductionRate: deductionRate,
       netCoefficient: netCoefficient,
-      rawPriceRub: rawPriceRub,
       finalPriceRub: finalPriceRub,
       deliveryMinRub: cfg.deliveryMinRub,
       deliveryMaxRub: cfg.deliveryMaxRub
     };
   }
 
-  var api = { PRICING: PRICING, roundPriceUpTo90: roundPriceUpTo90, computePricing: computePricing };
+  var api = { PRICING: PRICING, calculateMatPrice: calculateMatPrice, computePricing: computePricing };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.PricingCore = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
