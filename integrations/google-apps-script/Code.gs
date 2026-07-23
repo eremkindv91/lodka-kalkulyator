@@ -37,7 +37,7 @@ function doPost(e) {
 
     var props = PropertiesService.getScriptProperties();
     var token = props.getProperty("TELEGRAM_BOT_TOKEN");
-    var chatId = props.getProperty("TELEGRAM_CHAT_ID");
+    var chatId = props.getProperty("TELEGRAM_CHAT_ID"); // один получатель
     var allowedOrigin = props.getProperty("ALLOWED_ORIGIN");
     if (!token || !chatId || !allowedOrigin) {
       return json_({ success: false, message: "delivery-not-configured" });
@@ -66,6 +66,7 @@ function doPost(e) {
         success: false,
         orderNumber: body.id,
         message: "delivery-failed",
+        detail: telegramResult.error || null,
         channels: { telegram: false, max: false }
       });
     }
@@ -122,7 +123,8 @@ function sendTelegram_(token, chatId, text) {
   var data = {};
   try { data = JSON.parse(response.getContentText() || "{}"); } catch (err) {}
   var code = response.getResponseCode();
-  return { ok: code >= 200 && code < 300 && data.ok === true };
+  var ok = code >= 200 && code < 300 && data.ok === true;
+  return { ok: ok, error: ok ? null : (data.description || ("HTTP " + code)) };
 }
 
 function sendPhoto_(token, chatId, dataUrl, caption) {
