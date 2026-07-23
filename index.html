@@ -1048,6 +1048,18 @@
     return '<p class="parts-note">В зависимости от размеров и формы лодки коврик может изготавливаться из двух частей. Место соединения будет согласовано перед изготовлением.</p>';
   }
 
+  // Ручной набор для отправки заявки (кнопки Telegram/email + копирование + скачивание + чертёж-картинка).
+  // Показывается и на экране готовой заявки, и при сбое автоотправки — чтобы человек всегда мог отправить сам.
+  function manualToolkitHtml(o, num) {
+    var txt = orderText(o, num);
+    return telegramButtonHtml(txt) +
+      '<div class="export-actions"><button class="btn-ghost" data-act="copyText">📋 Скопировать текст заявки</button>' +
+      '<button class="btn-ghost" data-act="dlSvg">⬇ Скачать чертёж SVG</button>' +
+      '<button class="btn-ghost" data-act="dlJson">⬇ Скачать данные JSON</button></div>' +
+      '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(num || o.id) + '"><p class="hint">Чертёж можно сохранить картинкой: на телефоне — <strong>долгое нажатие</strong> → «Сохранить», на компьютере — <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
+      '<details class="order-text" open><summary>Текст заявки</summary><pre>' + esc(txt) + '</pre></details>';
+  }
+
   function renderOrder() {
     var o = buildOrder();
     if (!o) return '<div class="eyebrow">Шаг 5 из 5</div><h2 class="step-title">Стоимость и заказ</h2><p class="lead">Не хватает данных.</p><div class="actions-footer"><button class="btn-ghost" data-act="back4">Назад</button></div>';
@@ -1062,12 +1074,7 @@
         : '<div class="callout good"><p style="margin:0 0 4px;font-size:16px">Заявка готова ✅ Номер: <strong class="num">' + esc(ui.orderNumber) + '</strong></p><p style="margin:0">Отправьте её менеджеру удобным способом — текст и чертёж ниже.' + priceLine + '</p></div>';
       return '<h2 class="step-title">' + (ui.submitMode === "sent" ? "Заявка отправлена ✅" : "Заявка готова ✅") + '</h2><div style="height:14px"></div>' +
         sentBanner +
-        telegramButtonHtml(txt) +
-        '<div class="export-actions"><button class="btn-ghost" data-act="copyText">📋 Скопировать текст заявки</button>' +
-        '<button class="btn-ghost" data-act="dlSvg">⬇ Скачать чертёж SVG</button>' +
-        '<button class="btn-ghost" data-act="dlJson">⬇ Скачать данные JSON</button></div>' +
-        '<div class="draw-save"><img id="orderImg" alt="Чертёж коврика ' + esc(ui.orderNumber) + '"><p class="hint">Чертёж можно сохранить картинкой: на телефоне — <strong>долгое нажатие</strong> → «Сохранить», на компьютере — <strong>правой кнопкой</strong> → «Сохранить изображение». Или отправьте скриншотом.</p></div>' +
-        '<details class="order-text"><summary>Текст заявки (нажмите, чтобы посмотреть)</summary><pre>' + esc(txt) + '</pre></details>' +
+        manualToolkitHtml(o, ui.orderNumber) +
         '<div class="actions-footer"><button class="btn-ghost" data-act="newOrder">Новый расчёт</button></div>';
     }
 
@@ -1088,7 +1095,7 @@
       var partiallyDelivered = ui.submitChannels && (ui.submitChannels.telegram || ui.submitChannels.max);
       statusHtml = partiallyDelivered
         ? '<div class="callout warn" role="alert">Один канал уже получил заявку, второй пока не подтвердил доставку. Нажмите «Повторить отправку» — уже доставленный канал не будет дублироваться. Чтобы изменить данные, начните новый расчёт.</div>'
-        : '<div class="callout danger" role="alert">' + esc(ui.contactErr.form || "Сервис не подтвердил отправку. Проверьте данные и интернет, затем попробуйте ещё раз.") + '</div>' + telegramButtonHtml(orderText(o, ui.pendingOrderNumber));
+        : '<div class="callout danger" role="alert">Автоматически отправить не удалось. Отправьте заявку вручную кнопками ниже — или нажмите «Повторить отправку».</div>' + manualToolkitHtml(o, ui.pendingOrderNumber);
     }
 
     var html = '<div class="eyebrow">Шаг 5 из 5</div><h2 class="step-title">Стоимость и заказ</h2><div style="height:16px"></div>' +
