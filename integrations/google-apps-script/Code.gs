@@ -70,6 +70,9 @@ function doPost(e) {
       });
     }
 
+    // Чертёж отправляем фотографией (не критично для успеха: главное — текст доставлен).
+    if (body.image) sendPhoto_(token, chatId, body.image, "Чертёж " + body.id);
+
     // Состояние фиксируется только после подтверждения Telegram API.
     props.setProperty(stateKey, body.id);
     appendToSheet_(props.getProperty("SHEET_ID"), body);
@@ -120,6 +123,23 @@ function sendTelegram_(token, chatId, text) {
   try { data = JSON.parse(response.getContentText() || "{}"); } catch (err) {}
   var code = response.getResponseCode();
   return { ok: code >= 200 && code < 300 && data.ok === true };
+}
+
+function sendPhoto_(token, chatId, dataUrl, caption) {
+  try {
+    var m = /^data:(image\/(?:png|jpeg));base64,(.+)$/.exec(dataUrl);
+    if (!m) return { ok: false };
+    var blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], "chart.jpg");
+    var response = UrlFetchApp.fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+      method: "post",
+      payload: { chat_id: String(chatId), caption: String(caption || "").slice(0, 1000), photo: blob },
+      muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    return { ok: code >= 200 && code < 300 };
+  } catch (err) {
+    return { ok: false };
+  }
 }
 
 function appendToSheet_(sheetId, body) {

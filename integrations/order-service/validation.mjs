@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 const ORDER_KEYS = new Set([
   "schemaVersion", "id", "createdAt", "site", "boat", "inputDimensions",
   "productionDimensions", "geometry", "manufacturing", "pricing", "customer",
-  "consent", "plainText", "svg", "idempotencyKey",
+  "consent", "plainText", "svg", "image", "idempotencyKey",
 ]);
 const SAFE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
@@ -144,6 +144,11 @@ export function validateOrder(value, headerIdempotencyKey = null, allowedOrigin 
   if (value.svg !== undefined) {
     const svg = requireString(value.svg, "svg", 1, 170_000);
     if (!svg.includes("<svg")) throw new ValidationError("invalid-field", "svg");
+  }
+  if (value.image !== undefined && value.image !== null && value.image !== "") {
+    if (typeof value.image !== "string" || value.image.length > 400_000 || !/^data:image\/(png|jpeg);base64,/.test(value.image)) {
+      throw new ValidationError("invalid-field", "image");
+    }
   }
 
   return {

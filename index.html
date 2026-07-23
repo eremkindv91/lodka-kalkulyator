@@ -1340,6 +1340,36 @@
     }
   });
 
+  // Готовит JPEG-чертёж (data URL) для отправки в мессенджер как фото. Не блокирует отправку при сбое.
+  function chartImagePromise(o) {
+    return new Promise(function (resolve) {
+      try {
+        var svgString = exportSvgFile(o);
+        var m = svgString.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+        var w = m ? parseFloat(m[1]) : 600, h = m ? parseFloat(m[2]) : 800;
+        var svgUrl = dataUri("image/svg+xml", withPxSize(svgString));
+        var img = new Image();
+        var done = false;
+        var finish = function (v) { if (!done) { done = true; resolve(v); } };
+        img.onload = function () {
+          try {
+            var scale = Math.min(2, 900 / w) || 1.5;
+            var cw = Math.round(w * scale), ch = Math.round(h * scale);
+            var c = document.createElement("canvas");
+            c.width = cw; c.height = ch;
+            var ctx = c.getContext("2d");
+            ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, ch);
+            ctx.drawImage(img, 0, 0, cw, ch);
+            finish(c.toDataURL("image/jpeg", 0.85));
+          } catch (e) { finish(null); }
+        };
+        img.onerror = function () { finish(null); };
+        setTimeout(function () { finish(null); }, 4000);
+        img.src = svgUrl;
+      } catch (e) { resolve(null); }
+    });
+  }
+
   function doSubmit() {
     if (ui.submitMode === "sending") return; // защита от двойной отправки
     var errors = {};
@@ -1388,14 +1418,17 @@
       return;
     }
 
-    // Реальная отправка на настроенный endpoint
+    // Реальная отправка на настроенный endpoint (заявка + чертёж-картинка)
     ui.submitMode = "sending";
     render();
-    var payload = orderPayload(o, orderNumber);
-    payload.plainText = orderText(o, orderNumber);
-    payload.svg = exportSvgFile(o);
-    payload.idempotencyKey = submittedDraftId;
-    window.OrderSubmission.submitOrder(endpoint, payload, { timeoutMs: 20000 }).then(function (res) {
+    chartImagePromise(o).then(function (imageDataUrl) {
+      if (draft.id !== submittedDraftId) return;
+      var payload = orderPayload(o, orderNumber);
+      payload.plainText = orderText(o, orderNumber);
+      payload.svg = exportSvgFile(o);
+      if (imageDataUrl) payload.image = imageDataUrl;
+      payload.idempotencyKey = submittedDraftId;
+      window.OrderSubmission.submitOrder(endpoint, payload, { timeoutMs: 25000 }).then(function (res) {
       if (draft.id !== submittedDraftId) return;
       if (res && res.success) {
         ui.orderNumber = res.orderNumber || orderNumber;
@@ -1417,6 +1450,7 @@
       }
       render();
       if (!res || !res.success) focusFirstInvalidField();
+      });
     });
   }
   function copyOrderTextSilently(o, explicitOrderNumber) {
