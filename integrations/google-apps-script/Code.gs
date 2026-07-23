@@ -10,8 +10,11 @@
  *   TELEGRAM_BOT_TOKEN — токен от @BotFather
  *   TELEGRAM_CHAT_ID   — числовой chat_id менеджера
  *   ALLOWED_ORIGIN     — https://kovrikvlodky.ru
+ *   ORDER_EMAIL        — необязательно, куда дублировать заявку письмом (по умолчанию rwsales.shop@gmail.com)
  *   SHEET_ID           — необязательно, id Google-таблицы
  */
+
+var DEFAULT_ORDER_EMAIL = "rwsales.shop@gmail.com";
 
 var MAX_BODY_CHARS = 200000;
 var MAX_MESSAGE_CHARS = 4000;
@@ -73,6 +76,9 @@ function doPost(e) {
 
     // Чертёж отправляем фотографией (не критично для успеха: главное — текст доставлен).
     if (body.image) sendPhoto_(token, chatId, body.image, "Чертёж " + body.id);
+
+    // Дублируем ту же заявку на почту (текст + чертёж вложением). Best-effort: не влияет на успех.
+    sendEmail_(props.getProperty("ORDER_EMAIL") || DEFAULT_ORDER_EMAIL, body);
 
     // Состояние фиксируется только после подтверждения Telegram API.
     props.setProperty(stateKey, body.id);
@@ -141,6 +147,25 @@ function sendPhoto_(token, chatId, dataUrl, caption) {
     return { ok: code >= 200 && code < 300 };
   } catch (err) {
     return { ok: false };
+  }
+}
+
+function sendEmail_(to, body) {
+  if (!to) return;
+  try {
+    var subject = "Заявка на EVA-коврик " + body.id;
+    var text = body.plainText || ("Заявка " + body.id);
+    var options = { name: "Сайт kovrikvlodky.ru" };
+    if (body.image) {
+      var m = /^data:(image\/(?:png|jpeg));base64,(.+)$/.exec(body.image);
+      if (m) {
+        var ext = m[1] === "image/png" ? "png" : "jpg";
+        options.attachments = [Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], "chart-" + body.id + "." + ext)];
+      }
+    }
+    MailApp.sendEmail(to, subject, text, options);
+  } catch (err) {
+    // Почта — best-effort и не влияет на подтверждённый Telegram-статус.
   }
 }
 
