@@ -1118,6 +1118,23 @@
     var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
     return (c.orderEndpoint || "").trim();
   }
+  // Короткое тело письма для mailto (длинный mailto Chrome/почта не открывают).
+  function emailBodyShort(o, num) {
+    var FL = { rigid: "Жёсткое дно", ndnd: "НДНД" };
+    var L = [];
+    L.push("Заявка " + (num || o.id));
+    if (draft.boatName) L.push("Лодка: " + draft.boatName);
+    L.push("Тип дна: " + (FL[draft.floorType] || draft.floorType));
+    L.push("Коврик: " + fmt(o.prod.lengthCm) + "×" + fmt(o.prod.constantWidthCm) + " см, площадь " + o.geo.areaM2.toFixed(2).replace(".", ",") + " м²");
+    if (o.parts && o.parts.partCount > 1) L.push("Частей: " + o.parts.partCount);
+    if (o.pricing.valid) L.push("Стоимость: " + o.pricing.finalPriceRub + " руб (доставка отдельно)");
+    L.push("Имя: " + draft.customer.name);
+    L.push("Телефон: " + draft.customer.phone);
+    if (draft.customer.comment) L.push("Комментарий: " + draft.customer.comment.slice(0, 200));
+    L.push("");
+    L.push("Прикрепите к письму скачанный чертёж (кнопка «Скачать чертёж SVG» на сайте).");
+    return L.join("\n");
+  }
   function telegramButtonHtml(txt) {
     var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
     var btns = [];
@@ -1125,14 +1142,16 @@
       btns.push('<a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a>');
     }
     if (c.orderEmail) {
+      var o = buildOrder();
       var subject = "Заявка на EVA-коврик" + (ui.orderNumber ? " " + ui.orderNumber : "");
-      btns.push('<a class="btn-ghost email-btn" href="mailto:' + esc(c.orderEmail) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(txt) + '">✉ Отправить на email</a>');
+      var body = o ? emailBodyShort(o, ui.orderNumber) : (txt || "");
+      btns.push('<a class="btn-ghost email-btn" data-act="email" href="mailto:' + esc(c.orderEmail) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">✉ Отправить на email</a>');
     }
     if (!btns.length) return "";
     return '<div class="contact-btns">' + btns.join("") + '</div>' +
       '<p class="hint" style="margin:8px 0 16px">' +
-      (c.telegramContact ? 'Telegram: откроется чат с менеджером, текст заявки уже в буфере — вставьте (⌘/Ctrl+V) и отправьте. ' : '') +
-      (c.orderEmail ? 'Email: письмо с заявкой откроется в вашей почте.' : '') + '</p>';
+      (c.telegramContact ? 'Telegram: откроется чат с менеджером, полный текст заявки уже в буфере — вставьте (⌘/Ctrl+V) и отправьте. ' : '') +
+      (c.orderEmail ? 'Email: откроется письмо с краткой заявкой — прикрепите скачанный чертёж и отправьте.' : '') + '</p>';
   }
 
   // ---------- main render ----------
