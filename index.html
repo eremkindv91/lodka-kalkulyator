@@ -1144,21 +1144,15 @@
   }
   function telegramButtonHtml(txt) {
     var c = window.BOAT_MAT_PUBLIC_CONFIG || {};
-    var btns = [];
+    var html = "";
     if (c.telegramContact) {
-      btns.push('<a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a>');
+      html += '<div class="contact-btns"><a class="btn tg-btn" data-act="tg" href="https://t.me/' + encodeURIComponent(c.telegramContact) + '" target="_blank" rel="noopener">Написать в Telegram @' + esc(c.telegramContact) + '</a></div>';
+      html += '<p class="hint" style="margin:8px 0 4px">Telegram: откроется чат с менеджером, полный текст заявки уже в буфере — вставьте (⌘/Ctrl+V) и отправьте.</p>';
     }
     if (c.orderEmail) {
-      var o = buildOrder();
-      var subject = "Заявка на EVA-коврик" + (ui.orderNumber ? " " + ui.orderNumber : "");
-      var body = o ? emailBodyShort(o, ui.orderNumber) : (txt || "");
-      btns.push('<a class="btn-ghost email-btn" data-act="email" href="mailto:' + esc(c.orderEmail) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">✉ Отправить на email</a>');
+      html += '<p class="hint" style="margin:4px 0 16px">Почта для связи: <strong>' + esc(c.orderEmail) + '</strong> <button class="btn-link" type="button" data-act="copyEmail" style="min-height:auto;padding:0 4px">копировать</button></p>';
     }
-    if (!btns.length) return "";
-    return '<div class="contact-btns">' + btns.join("") + '</div>' +
-      '<p class="hint" style="margin:8px 0 16px">' +
-      (c.telegramContact ? 'Telegram: откроется чат с менеджером, полный текст заявки уже в буфере — вставьте (⌘/Ctrl+V) и отправьте. ' : '') +
-      (c.orderEmail ? 'Email: откроется письмо с краткой заявкой — прикрепите скачанный чертёж и отправьте.' : '') + '</p>';
+    return html;
   }
 
   // ---------- main render ----------
@@ -1338,6 +1332,7 @@
       case "submit": doSubmit(); break;
       case "tg": { var otg = buildOrder(); if (otg) copyOrderTextSilently(otg, ui.orderNumber || ui.pendingOrderNumber); break; } // ссылка откроет чат сама, текст уже в буфере
       case "copyText": { var oc = buildOrder(); if (oc) doCopy(t, orderText(oc), "📋 Скопировать текст заявки"); break; }
+      case "copyEmail": { var em = (window.BOAT_MAT_PUBLIC_CONFIG || {}).orderEmail || ""; if (em) doCopy(t, em, "копировать"); break; }
       case "dlSvg": { var os = buildOrder(); if (os) download("kovrik-" + (ui.orderNumber || os.id) + ".svg", "image/svg+xml", exportSvgFile(os)); break; }
       case "dlJson": { var od = buildOrder(); if (od) download("kovrik-" + (ui.orderNumber || od.id) + ".json", "application/json", orderJson(od)); break; }
       case "newOrder": resetAll(); break;

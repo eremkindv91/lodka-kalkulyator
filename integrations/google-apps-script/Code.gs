@@ -78,7 +78,7 @@ function doPost(e) {
     if (body.image) sendPhoto_(token, chatId, body.image, "Чертёж " + body.id);
 
     // Дублируем ту же заявку на почту (текст + чертёж вложением). Best-effort: не влияет на успех.
-    sendEmail_(props.getProperty("ORDER_EMAIL") || DEFAULT_ORDER_EMAIL, body);
+    var emailResult = sendEmail_(props.getProperty("ORDER_EMAIL") || DEFAULT_ORDER_EMAIL, body);
 
     // Состояние фиксируется только после подтверждения Telegram API.
     props.setProperty(stateKey, body.id);
@@ -87,7 +87,8 @@ function doPost(e) {
     return json_({
       success: true,
       orderNumber: body.id,
-      channels: { telegram: true, max: false }
+      channels: { telegram: true, email: emailResult.ok, max: false },
+      emailError: emailResult.ok ? null : emailResult.error
     });
   } catch (err) {
     return json_({ success: false, message: "server-error" });
@@ -151,7 +152,7 @@ function sendPhoto_(token, chatId, dataUrl, caption) {
 }
 
 function sendEmail_(to, body) {
-  if (!to) return;
+  if (!to) return { ok: false, error: "no-recipient" };
   try {
     var subject = "Заявка на EVA-коврик " + body.id;
     var text = body.plainText || ("Заявка " + body.id);
@@ -164,8 +165,10 @@ function sendEmail_(to, body) {
       }
     }
     MailApp.sendEmail(to, subject, text, options);
+    return { ok: true, error: null };
   } catch (err) {
     // Почта — best-effort и не влияет на подтверждённый Telegram-статус.
+    return { ok: false, error: String(err && err.message ? err.message : err) };
   }
 }
 
@@ -210,6 +213,14 @@ function sha256Hex_(value) {
     var n = (b + 256) % 256;
     return (n < 16 ? "0" : "") + n.toString(16);
   }).join("");
+}
+
+// Запустите эту функцию в редакторе Apps Script один раз (кнопка ▷ Выполнить),
+// чтобы выдать разрешение на отправку почты. После этого авто-письма заработают.
+function testEmail() {
+  var to = PropertiesService.getScriptProperties().getProperty("ORDER_EMAIL") || DEFAULT_ORDER_EMAIL;
+  MailApp.sendEmail(to, "Тест почты kovrikvlodky.ru", "Если видите это письмо — авто-отправка заявок на почту работает.");
+  Logger.log("Тестовое письмо отправлено на " + to);
 }
 
 function doGet() {
